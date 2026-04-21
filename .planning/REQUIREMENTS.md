@@ -77,36 +77,38 @@
 
 ## Traceability
 
-| REQ-ID | Phase | Requirement summary |
-|--------|-------|---------------------|
-| SEC-01 | 0 | OTP verify brute-force lockout |
-| SEC-02 | 0 | Remove DEV bypass |
-| SEC-03 | 0 | Session expiry enforcement |
-| SEC-04 | 0 | Zod validation on existing routes |
-| INF-01 | 1 | poshakh_auth table migration |
-| INF-02 | 1 | argon2id password utility |
-| INF-03 | 1 | Extended otp-store |
-| INF-04 | 1 | Twilio Verify replaces MSG91 |
-| AUTH-01 | 2 | Signup backend route |
-| AUTH-02 | 2 | Verify-signup backend route |
-| AUTH-03 | 2 | Email OTP via Resend |
-| AUTH-04 | 2 | Login backend route |
-| AUTH-05 | 2 | Forgot-password backend route |
-| AUTH-06 | 2 | Reset-password backend route |
-| AUTH-07 | 2 | Zod validation on all new routes |
-| BFF-01 | 3 | BFF proxy routes |
-| BFF-02 | 3 | Session payload upgrade |
-| BFF-03 | 3 | Next.js middleware route protection |
-| UI-01 | 4 | Signup form |
-| UI-02 | 4 | OTP confirmation screen |
-| UI-03 | 4 | Login form |
-| UI-04 | 4 | Forgot-password form |
-| UI-05 | 4 | Reset-password form |
-| UI-06 | 4 | Error messages |
-| MIG-01 | 5 | Legacy user detection + prompt |
-| MIG-02 | 5 | Cart persistence fix |
-| MIG-03 | 5 | Backward-compatible session tokens |
+| REQ-ID | Phase | Status | Requirement summary |
+|--------|-------|--------|---------------------|
+| SEC-01 | 0 | Pending | OTP verify brute-force lockout |
+| SEC-02 | 0 | Pending | Remove DEV bypass |
+| SEC-03 | 0 | Pending | Session expiry enforcement |
+| SEC-04 | 0 | Pending | Zod validation on existing routes |
+| INF-01 | 1 | Pending | poshakh_auth table migration |
+| INF-02 | 1 | Pending | argon2id password utility |
+| INF-03 | 1 | Pending | Extended otp-store |
+| INF-04 | 1 | Pending | Twilio Verify replaces MSG91 |
+| AUTH-01 | 2 | Pending | Signup backend route |
+| AUTH-02 | 2 | Pending | Verify-signup backend route |
+| AUTH-03 | 2 | Pending | Email OTP via Resend |
+| AUTH-04 | 2 | Pending | Login backend route |
+| AUTH-05 | 2 | Pending | Forgot-password backend route |
+| AUTH-06 | 2 | Pending | Reset-password backend route |
+| AUTH-07 | 2 | Pending | Zod validation on all new routes |
+| BFF-01 | 3 | Pending | BFF proxy routes |
+| BFF-02 | 3 | Pending | Session payload upgrade |
+| BFF-03 | 3 | Pending | Next.js middleware route protection |
+| UI-01 | 4 | Pending | Signup form |
+| UI-02 | 4 | Pending | OTP confirmation screen |
+| UI-03 | 4 | Pending | Login form |
+| UI-04 | 4 | Pending | Forgot-password form |
+| UI-05 | 4 | Pending | Reset-password form |
+| UI-06 | 4 | Pending | Error messages |
+| MIG-01 | 5 | Pending | Legacy user detection + prompt |
+| MIG-02 | 5 | Pending | Cart persistence fix |
+| MIG-03 | 5 | Pending | Backward-compatible session tokens |
+
+**Coverage: 27/27 requirements mapped — 0/27 complete**
 
 ---
 
-*Created: 2026-04-22*
+*Created: 2026-04-22 | Traceability confirmed: 2026-04-22*
