@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(openssl rand *)",
+      "Bash(git -C \"C:/Users/Fuzlan/Claude Projects/poshakh2\" status)"
+    ]
+  }
+}
