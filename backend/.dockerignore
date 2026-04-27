@@ -1,0 +1,9 @@
+node_modules
+.medusa
+.git
+*.md
+.env
+.env.*
+!.env.template
+integration-tests
+coverage

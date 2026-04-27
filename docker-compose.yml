@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: poshakh
+      POSTGRES_USER: poshakh
+      POSTGRES_PASSWORD: local_dev_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U poshakh"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ./backend
+    ports:
+      - "9000:9000"
+    env_file: ./backend/.env
+    environment:
+      NODE_ENV: production
+      # Pass payment/SMS keys from root .env so it's the single source of truth
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
+      MSG91_AUTH_KEY: ${MSG91_AUTH_KEY}
+      MSG91_TEMPLATE_ID: ${MSG91_TEMPLATE_ID}
+      FAST2SMS_API_KEY: ${FAST2SMS_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_MEDUSA_BACKEND_URL: http://localhost:9000
+        NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY:-}
+        NEXT_PUBLIC_DEV_SIMULATE: "true"
+    environment:
+      # Server-side env vars (Next.js API routes) — read at runtime, not baked in
+      MEDUSA_BACKEND_URL: http://api:9000
+      MEDUSA_CUSTOMER_SECRET: docker_customer_secret
+      # Runtime-injectable PK (overrides baked-in NEXT_PUBLIC_* value in proxy routes)
+      MEDUSA_PUBLISHABLE_KEY: ${NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY:-pk_bdccf833fdea56037a4d36201e40e6e5ded8ebbc7fff8a97ffb0876bfae84290}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  pgdata:
