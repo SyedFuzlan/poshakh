@@ -8,13 +8,9 @@ import { useStore } from "@/store";
 export default function ProductDetailClient({ product, whatsappUrl }: { product: Product, whatsappUrl: string }) {
   const { addToCart, setCartOpen } = useStore();
 
-  // Handle missing product data
-  if (!product || !product.images || product.images.length === 0) {
-    return <div className="max-w-7xl mx-auto px-6 py-12 text-center">Product not found</div>;
-  }
-
-  const firstInStock = product.variants?.find(v => v.stock > 0)?.size ?? null;
-  const allOOS = !product.variants?.length || product.variants.every(v => v.stock === 0);
+  // Derive stable values — safe even when variants is undefined
+  const firstInStock = product?.variants?.find(v => v.stock > 0)?.size ?? null;
+  const allOOS = !product?.variants?.length || product.variants.every(v => Number(v.stock) === 0);
 
   const [selectedSize, setSelectedSize] = useState<string | null>(firstInStock);
   const [isStitching, setIsStitching] = useState<boolean>(false);
@@ -26,6 +22,11 @@ export default function ProductDetailClient({ product, whatsappUrl }: { product:
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Guard moved below all hooks — fixes Rules of Hooks violation
+  if (!product || !product.images || product.images.length === 0) {
+    return <div className="max-w-7xl mx-auto px-6 py-12 text-center">Product not found</div>;
+  }
 
   const handleAddToCart = () => {
     const variant = product.variants?.find(v => v.size === (isStitching ? "XL" : selectedSize));
