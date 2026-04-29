@@ -414,7 +414,7 @@ function renderProducts(products) {
         <div class="tile-name">${esc(p.name)}</div>
         <div class="tile-meta">${esc(p.category)}${p.collection ? ' · ' + esc(p.collection) : ''}</div>
         <div class="tile-price">${esc(p.formattedPrice)}</div>
-        <button class="btn-delete" onclick="deleteProduct(${p.id},'${esc(p.name)}')">DELETE</button>
+        <button class="btn-delete" onclick="deleteProduct('${esc(String(p.id))}','${esc(p.name)}')">DELETE</button>
       </div>
     </div>`).join('')}</div>`;
 }
