@@ -27,13 +27,15 @@ const storage = multer.diskStorage({
   },
 });
 
+const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".avif"];
+const ALLOWED_MIMES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
+
 const upload = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB max
   fileFilter: (_req, file, cb) => {
-    const allowed = [".jpg", ".jpeg", ".png", ".webp", ".avif"];
     const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, allowed.includes(ext));
+    cb(null, ALLOWED_EXTENSIONS.includes(ext) && ALLOWED_MIMES.includes(file.mimetype));
   },
 });
 
