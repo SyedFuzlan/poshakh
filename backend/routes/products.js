@@ -137,10 +137,10 @@ router.post(
         return res.status(400).json({ error: "price must be a positive number" });
       }
 
-      // Normalise sizes and stock arrays (multer returns a string when only one value is posted)
-      const rawSizes = req.body['sizes[]'] ?? [];
+      // multer 2.x strips [] suffix: sizes[] → req.body.sizes (array)
+      const rawSizes = req.body.sizes ?? req.body['sizes[]'] ?? [];
       const sizes = Array.isArray(rawSizes) ? rawSizes : [rawSizes];
-      const rawStock = req.body['stock[]'] ?? [];
+      const rawStock = req.body.stock ?? req.body['stock[]'] ?? [];
       const stockArr = Array.isArray(rawStock) ? rawStock : [rawStock];
 
       if (!sizes.length || (sizes.length === 1 && sizes[0] === '')) {
