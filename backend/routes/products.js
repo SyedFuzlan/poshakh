@@ -207,14 +207,21 @@ router.delete("/:id", requireOwner, (req, res) => {
     if (!row) return res.status(404).json({ error: "Product not found" });
 
     // Delete the image file from disk if it's a local upload
+    // Use a safe fallback that handles both absolute URLs and relative paths
     if (row.image_url && row.image_url.includes("/uploads/")) {
-      const filename = path.basename(new URL(row.image_url).pathname);
-      const filePath = path.join(UPLOADS_DIR, filename);
-      if (fs.existsSync(filePath)) {
-        try { fs.unlinkSync(filePath); } catch { /* ignore */ }
-      }
+      try {
+        const pathname = row.image_url.startsWith("http")
+          ? new URL(row.image_url).pathname
+          : row.image_url;
+        const filename = path.basename(pathname);
+        const filePath = path.join(UPLOADS_DIR, filename);
+        if (fs.existsSync(filePath)) {
+          try { fs.unlinkSync(filePath); } catch { /* ignore */ }
+        }
+      } catch { /* ignore image cleanup errors — still delete the record */ }
     }
 
+    // Delete record unconditionally — image cleanup failure must not block deletion
     db.prepare("DELETE FROM products WHERE id = ?").run(req.params.id);
     res.json({ success: true });
   } catch (err) {
