@@ -29,7 +29,8 @@ export default function ProductDetailClient({ product, whatsappUrl }: { product:
   }
 
   const handleAddToCart = () => {
-    const variant = product.variants?.find(v => v.size === (isStitching ? "XL" : selectedSize));
+    // For custom stitching, no variant lookup — use a sentinel id and no variantId
+    const variant = isStitching ? undefined : product.variants?.find(v => v.size === selectedSize);
     const cartItem = {
       id: `${product.id}-${isStitching ? 'custom' : selectedSize}`,
       productId: product.id,
@@ -127,7 +128,7 @@ export default function ProductDetailClient({ product, whatsappUrl }: { product:
           </div>
 
           <div className="mt-4 space-y-4">
-            {allOOS ? (
+            {allOOS && !isStitching ? (
               <button
                 disabled
                 className="w-full py-5 bg-poshakh-charcoal/30 text-white font-heading tracking-widest text-lg uppercase font-bold cursor-not-allowed"
@@ -184,7 +185,7 @@ export default function ProductDetailClient({ product, whatsappUrl }: { product:
               <p className="text-poshakh-maroon text-sm font-semibold">{product.formattedPrice}</p>
             </div>
           </div>
-          {allOOS ? (
+          {allOOS && !isStitching ? (
             <button
               disabled
               className="bg-poshakh-charcoal/30 text-white font-heading tracking-widest uppercase font-bold px-8 py-3 cursor-not-allowed"
