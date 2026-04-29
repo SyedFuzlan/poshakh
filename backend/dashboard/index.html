@@ -340,25 +340,25 @@ function renderOrders() {
 }
 
 function orderCard(o) {
-  const statusClass = 'status-' + o.status;
+  const statusClass = 'status-' + esc(o.status);
   const statusLabel = {paid:'Ready to Ship',shipped:'Shipped',pending_verification:'UPI — Verify Payment'}[o.status] || o.status;
   const itemsHtml = o.items.map(it => `
     <div class="item-row">
       ${it.image ? `<img class="item-img" src="${esc(it.image)}" alt="${esc(it.name)}" onerror="this.style.display='none'"/>` : `<div class="item-img-placeholder">🛍️</div>`}
       <div class="item-info">
         <div class="item-name">${esc(it.name)}</div>
-        <div class="item-meta">${it.size ? `Size: ${esc(it.size)} · ` : ''}Qty: ${it.quantity} · ₹${Number(it.price).toLocaleString('en-IN')}</div>
+        <div class="item-meta">${it.size ? `Size: ${esc(it.size)} · ` : ''}Qty: ${Number(it.quantity)} · ₹${Number(it.price).toLocaleString('en-IN')}</div>
       </div>
     </div>`).join('');
   const payRef = o.payment_method === 'upi' ? `UTR: ${esc(o.utr||'—')}` : `Ref: ${esc(o.razorpay_payment_id||'—')}`;
   const footerBtn = o.status === 'shipped'
-    ? `<span class="shipped-label">✅ Shipped on ${o.shipped_at_ist || '—'}</span>`
-    : `<button class="btn-ship" onclick="markShipped('${o.id}',this)">${o.status==='pending_verification'?'VERIFY & SHIP':'MARK AS SHIPPED'}</button>`;
-  return `<div class="order-card" id="order-${o.id}">
+    ? `<span class="shipped-label">✅ Shipped on ${esc(o.shipped_at_ist || '—')}</span>`
+    : `<button class="btn-ship" onclick="markShipped('${esc(String(o.id))}',this)">${o.status==='pending_verification'?'VERIFY & SHIP':'MARK AS SHIPPED'}</button>`;
+  return `<div class="order-card" id="order-${esc(String(o.id))}">
     <div class="order-header">
       <div>
         <div class="order-id">${esc(o.id)}</div>
-        <div class="order-date">${o.created_at_ist || o.created_at_utc} · ${o.payment_method?.toUpperCase()||'—'} · ${payRef}</div>
+        <div class="order-date">${esc(o.created_at_ist || o.created_at_utc)} · ${o.payment_method?.toUpperCase()||'—'} · ${payRef}</div>
       </div>
       <span class="status-badge ${statusClass}">${statusLabel}</span>
     </div>
@@ -374,7 +374,7 @@ function orderCard(o) {
       </div>
     </div>
     <div class="order-footer">
-      <div class="order-total">${o.total_formatted} <span style="font-size:12px;color:#888;font-weight:400">(Shipping: ${o.shipping_cost_formatted})</span></div>
+      <div class="order-total">${esc(o.total_formatted)} <span style="font-size:12px;color:#888;font-weight:400">(Shipping: ${esc(o.shipping_cost_formatted)})</span></div>
       ${footerBtn}
     </div>
   </div>`;
