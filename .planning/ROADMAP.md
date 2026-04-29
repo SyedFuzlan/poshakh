@@ -17,13 +17,21 @@ Move from ~80% functional local app to fully deployed, customer-ready store.
 
 **Goal:** Products have descriptions and size variants that are stored in the DB, served via API, and shown on the product detail page.
 
-**Status:** not-started  
-**Plans:** 3 plans
+**Status:** complete (2026-04-29)  
+**Plans:** 3/3 complete
 
-Plans:
-- [ ] 01-PLAN-01.md — DB migration: add description column + product_variants table
-- [ ] 01-PLAN-02.md — API update: GET /:id with LEFT JOIN variants, POST / variant insert, dashboard form
-- [ ] 01-PLAN-03.md — UI update: wire size selector to real variants, OOS states, remove dead Medusa code
+**Wave 1**
+- [x] 01-PLAN-01.md — DB migration: add description column + product_variants table
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [x] 01-PLAN-02.md — API update: GET /:id with LEFT JOIN variants, POST / variant insert, dashboard form
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [x] 01-PLAN-03.md — UI update: wire size selector to real variants, OOS states, remove dead Medusa code
+
+**Cross-cutting constraints:**
+- `db.prepare().run()/.get()/.all()` pattern required in all backend route tasks
+- `product.variants` shape `{ id, size, stock }` produced by Plan 02 and consumed by Plan 03
 
 ---
 
