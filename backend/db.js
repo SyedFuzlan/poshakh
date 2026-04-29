@@ -40,11 +40,11 @@ async function initDb() {
     )
   `);
 
-  // Phase 01: add description column — idempotent via try/catch
+  // Phase 01: add description column — idempotent, only ignore duplicate-column error
   try {
     _db.run(`ALTER TABLE products ADD COLUMN description TEXT`);
-  } catch (_) {
-    // Column already exists — safe to ignore on subsequent startups
+  } catch (e) {
+    if (!e.message?.includes('duplicate column name')) throw e;
   }
 
   // Phase 01: product variants table — per D-01 / D-02
