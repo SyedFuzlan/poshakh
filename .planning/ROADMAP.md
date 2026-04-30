@@ -39,12 +39,14 @@ Move from ~80% functional local app to fully deployed, customer-ready store.
 
 **Goal:** Owner can edit product name, price, description, stock from the dashboard without deleting and re-adding.
 
-**Status:** not-started
+**Status:** not-started  
+**Plans:** 2 plans
 
-### Plans
+**Wave 1**
+- [ ] 02-PLAN-01.md — Add `PATCH /api/products/:id` backend endpoint to `backend/routes/products.js`
 
-- [ ] 02-01: Add `PATCH /api/products/:id` backend endpoint
-- [ ] 02-02: Wire edit form in owner dashboard (`/dashboard` products tab)
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 02-PLAN-02.md — Wire edit modal in owner dashboard (`backend/dashboard/index.html`)
 
 ---
 
