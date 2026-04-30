@@ -39,7 +39,7 @@ Move from ~80% functional local app to fully deployed, customer-ready store.
 
 **Goal:** Owner can edit product name, price, description, stock from the dashboard without deleting and re-adding.
 
-**Status:** not-started  
+**Status:** planned (2026-04-30)  
 **Plans:** 2 plans
 
 **Wave 1**
