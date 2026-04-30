@@ -232,4 +232,91 @@ router.delete("/:id", requireOwner, (req, res) => {
   }
 });
 
+// ── PATCH /api/products/:id (owner only) ───────
+router.patch("/:id", requireOwner, (req, res) => {
+  try {
+    const { name, price, description, sizes, stock: stockArr } = req.body;
+
+    // 1. Existence check
+    const existing = db
+      .prepare("SELECT * FROM products WHERE id = ?")
+      .get(req.params.id);
+    if (!existing) return res.status(404).json({ error: "Product not found" });
+
+    // 2. Validate required fields
+    if (!name || !price) {
+      return res.status(400).json({ error: "name and price are required" });
+    }
+    const priceNum = parseFloat(price);
+    if (isNaN(priceNum) || priceNum <= 0) {
+      return res.status(400).json({ error: "price must be a positive number" });
+    }
+
+    // 3. Validate + normalise sizes array
+    // Deduplicate before DELETE to prevent orphaned variants on INSERT failure (D-06)
+    const sizesRaw = Array.isArray(sizes) ? sizes : sizes ? [sizes] : [];
+    const stockRaw = Array.isArray(stockArr) ? stockArr : stockArr ? [stockArr] : [];
+    const VALID_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "Free Size"];
+    const seen = new Set();
+    const sizesFiltered = [];
+    const stockFiltered = [];
+    sizesRaw.forEach((sz, i) => {
+      if (!VALID_SIZES.includes(sz)) return;
+      if (seen.has(sz)) return;
+      seen.add(sz);
+      sizesFiltered.push(sz);
+      stockFiltered.push(stockRaw[i]);
+    });
+    if (!sizesFiltered.length) {
+      return res.status(400).json({ error: "At least one size is required" });
+    }
+
+    // 4. Update products row (price stored in paise)
+    db.prepare(
+      "UPDATE products SET name = ?, price_paise = ?, description = ? WHERE id = ?"
+    ).run(
+      name.trim(),
+      Math.round(priceNum * 100),
+      (description || "").trim() || null,
+      req.params.id
+    );
+
+    // 5. Delete all existing variants, then re-insert submitted set (D-06)
+    db.prepare("DELETE FROM product_variants WHERE product_id = ?").run(
+      req.params.id
+    );
+    sizesFiltered.forEach((size, i) => {
+      const s = parseInt(stockFiltered[i] ?? "0", 10);
+      db.prepare(
+        "INSERT INTO product_variants (product_id, size, stock) VALUES (?, ?, ?)"
+      ).run(req.params.id, size, isNaN(s) ? 0 : Math.max(0, s));
+    });
+
+    // 6. Re-fetch with LEFT JOIN and respond with full product shape
+    const rows = db
+      .prepare(
+        `SELECT p.*,
+                pv.id    AS variant_id,
+                pv.size  AS variant_size,
+                pv.stock AS variant_stock
+         FROM   products p
+         LEFT JOIN product_variants pv ON pv.product_id = p.id
+         WHERE  p.id = ?
+         ORDER BY pv.id ASC`
+      )
+      .all(req.params.id);
+    const variants = rows
+      .filter((r) => r.variant_id != null)
+      .map((r) => ({
+        id: String(r.variant_id),
+        size: r.variant_size,
+        stock: r.variant_stock,
+      }));
+    res.json({ product: formatProduct(rows[0], variants) });
+  } catch (err) {
+    console.error("PATCH /api/products/:id error:", err);
+    res.status(500).json({ error: "Failed to update product" });
+  }
+});
+
 module.exports = router;
