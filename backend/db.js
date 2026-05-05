@@ -80,9 +80,28 @@ async function initDb() {
   try {
     _db.run(`ALTER TABLE products ADD COLUMN brand TEXT`);
   } catch (e) {
-    // Ignore duplicate column error
     if (!e.message?.includes('duplicate column name')) {
       console.error('Migration error (brand):', e.message);
+    }
+  }
+
+  // Ensure collection column exists (D-06 check)
+  try {
+    _db.run(`ALTER TABLE products ADD COLUMN collection TEXT`);
+  } catch (e) {
+    if (!e.message?.includes('duplicate column name')) {
+      console.error('Migration error (collection):', e.message);
+    }
+  }
+  
+  // Ensure price_paise column exists (since routes use it)
+  try {
+    _db.run(`ALTER TABLE products ADD COLUMN price_paise INTEGER`);
+    // Migrate existing price to price_paise if needed
+    _db.run(`UPDATE products SET price_paise = CAST(price * 100 AS INTEGER) WHERE price_paise IS NULL`);
+  } catch (e) {
+    if (!e.message?.includes('duplicate column name')) {
+      console.error('Migration error (price_paise):', e.message);
     }
   }
 
@@ -104,43 +123,46 @@ function getDb() {
 }
 
 function prepare(sql) {
-  return getDb().prepare(sql);
-}
-
-function run(sql, params) {
-  return getDb().run(sql, params);
-}
-
-function get(sql, params) {
-  const stmt = getDb().prepare(sql);
-  if (params) {
-    stmt.bind(params);
-  }
-  const result = stmt.step() ? stmt.getAsObject() : null;
-  stmt.free();
-  return result;
-}
-
-function all(sql, params) {
-  const stmt = getDb().prepare(sql);
-  if (params) {
-    stmt.bind(params);
-  }
-  const results = [];
-  while (stmt.step()) {
-    results.push(stmt.getAsObject());
-  }
-  stmt.free();
-  return results;
+  const statement = getDb().prepare(sql);
+  return {
+    all: (...params) => {
+      // Handle array of params or spread params
+      const p = params.length === 1 && Array.isArray(params[0]) ? params[0] : params;
+      statement.bind(p);
+      const results = [];
+      while (statement.step()) results.push(statement.getAsObject());
+      statement.reset(); // Don't free yet, let GC handle or use a pool if needed
+      return results;
+    },
+    get: (...params) => {
+      const p = params.length === 1 && Array.isArray(params[0]) ? params[0] : params;
+      statement.bind(p);
+      const result = statement.step() ? statement.getAsObject() : null;
+      statement.reset();
+      return result;
+    },
+    run: (...params) => {
+      const p = params.length === 1 && Array.isArray(params[0]) ? params[0] : params;
+      statement.bind(p);
+      statement.step();
+      statement.reset();
+      saveDb();
+      // Get last insert ID
+      const res = getDb().exec("SELECT last_insert_rowid()");
+      return { lastInsertRowid: res[0].values[0][0] };
+    },
+    free: () => statement.free()
+  };
 }
 
 module.exports = {
   initDb,
   saveDb,
   getDb,
-  prepare,
-  run,
-  get,
-  all,
-  db: { prepare, run, get, all }
+  db: {
+    prepare,
+    run: (sql, params) => prepare(sql).run(params),
+    get: (sql, params) => prepare(sql).get(params),
+    all: (sql, params) => prepare(sql).all(params)
+  }
 };
