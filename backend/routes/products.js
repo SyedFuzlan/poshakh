@@ -155,11 +155,12 @@ router.post(
 
       const result = db
         .prepare(
-          `INSERT INTO products (name, price_paise, category, collection, image_url, description)
-           VALUES (?, ?, ?, ?, ?, ?)`
+          `INSERT INTO products (name, price, price_paise, category, collection, image_url, description)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`
         )
         .run(
           name.trim(),
+          priceNum,
           Math.round(priceNum * 100), // store in paise
           category.trim().toLowerCase(),
           (collection || "").trim(),
@@ -273,9 +274,10 @@ router.patch("/:id", requireOwner, (req, res) => {
 
     // 4. Update products row (price stored in paise)
     db.prepare(
-      "UPDATE products SET name = ?, price_paise = ?, description = ? WHERE id = ?"
+      "UPDATE products SET name = ?, price = ?, price_paise = ?, description = ? WHERE id = ?"
     ).run(
       name.trim(),
+      priceNum,
       Math.round(priceNum * 100),
       (description || "").trim() || null,
       req.params.id
