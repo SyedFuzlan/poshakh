@@ -78,7 +78,7 @@ async function initDb() {
 
   // 2. Migrations
   try {
-    _db.run(\`ALTER TABLE products ADD COLUMN brand TEXT\`);
+    _db.run(`ALTER TABLE products ADD COLUMN brand TEXT`);
   } catch (e) {
     // Ignore duplicate column error
     if (!e.message?.includes('duplicate column name')) {
