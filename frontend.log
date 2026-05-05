@@ -1,0 +1,80 @@
+
+> frontend@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.4 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.4:3000
+- Environments: .env.local
+✓ Ready in 1183ms
+
+ GET / 200 in 2.1s (next.js: 865ms, application-code: 1235ms)
+ GET /api/auth/me 200 in 694ms (next.js: 606ms, application-code: 88ms)
+ GET /api/auth/me 200 in 342ms (next.js: 316ms, application-code: 26ms)
+[browser] Uncaught Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+      <HTTPAccessFallbackErrorBoundary pathname="/" notFound={<NotAllowedRootHTTPFallbackError>} forbidden={undefined} ...>
+        <RedirectBoundary>
+          <RedirectErrorBoundary router={{...}}>
+            <Head>
+            <__next_root_layout_boundary__>
+              <SegmentViewNode type="layout" pagePath="layout.tsx">
+                <SegmentTrieNode>
+                <link>
+                <script>
+                <script>
+                <script>
+                <RootLayout>
+                  <html lang="en" className="cormorant_...">
+                    <body className="min-h-full...">
+                      <SessionProvider>
+                        <div>
+                        <Navbar>
+                          <nav className="sticky top...">
+                            <div className="max-w-[120...">
+                              <button>
+                              <LinkComponent>
+                              <ul>
+                              <div className="flex items...">
+                                <button>
+                                <button>
+                                <button onClick={function onClick} aria-label="Cart" className="relative t...">
+                                  <svg>
++                                 <span
++                                   className="absolute -top-2 -right-2 text-[10px] font-bold w-4 h-4 rounded-full fle..."
++                                 >
+                          ...
+                        ...
+            ...
+
+    at <unknown> (https://react.dev/link/hydration-mismatch)
+    at span (<anonymous>)
+    at Navbar (src/components/Navbar.tsx:132:17)
+    at RootLayout (src\app\layout.tsx:42:11)
+  130 |               </svg>
+  131 |               {cart.length > 0 && (
+> 132 |                 <span className={`absolute -top-2 -right-2 text-[10px] font-bold w-4 h-4 ...
+      |                 ^
+  133 |                   {cart.reduce((t, i) => t + i.quantity, 0)}
+  134 |                 </span>
+  135 |               )}
+ GET / 200 in 767ms (next.js: 36ms, application-code: 730ms)
+ GET /checkout 200 in 99ms (next.js: 57ms, application-code: 42ms)
+ GET /order-confirmation?paymentId=pay_dev_1777454157894 200 in 70ms (next.js: 43ms, application-code: 27ms)
+ GET / 200 in 75ms (next.js: 7ms, application-code: 68ms)
+ GET /products?cat=bestsellers 200 in 109ms (next.js: 69ms, application-code: 40ms)
+ GET /products/9 200 in 625ms (next.js: 558ms, generate-params: 506ms, application-code: 68ms)
+ GET /products?cat=sarees 200 in 35ms (next.js: 6ms, application-code: 29ms)
+ GET /products/1 200 in 70ms (next.js: 22ms, generate-params: 13ms, application-code: 49ms)

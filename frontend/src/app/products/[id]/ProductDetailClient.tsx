@@ -2,11 +2,13 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Product } from "@/types";
 import { useStore } from "@/store";
 
-export default function ProductDetailClient({ product, whatsappUrl }: { product: Product, whatsappUrl: string }) {
+export default function ProductDetailClient({ product }: { product: Product }) {
   const { addToCart, setCartOpen } = useStore();
+  const router = useRouter();
 
   // Derive stable values — safe even when variants is undefined
   const firstInStock = product?.variants?.find(v => v.stock > 0)?.size ?? null;
@@ -28,10 +30,9 @@ export default function ProductDetailClient({ product, whatsappUrl }: { product:
     return <div className="max-w-7xl mx-auto px-6 py-12 text-center">Product not found</div>;
   }
 
-  const handleAddToCart = () => {
-    // For custom stitching, no variant lookup — use a sentinel id and no variantId
+  const buildCartItem = () => {
     const variant = isStitching ? undefined : product.variants?.find(v => v.size === selectedSize);
-    const cartItem = {
+    return {
       id: `${product.id}-${isStitching ? 'custom' : selectedSize}`,
       productId: product.id,
       variantId: variant?.id,
@@ -41,8 +42,16 @@ export default function ProductDetailClient({ product, whatsappUrl }: { product:
       image: product.images[0],
       size: isStitching ? 'Custom Stitching' : (selectedSize ?? ''),
     };
-    addToCart(cartItem);
+  };
+
+  const handleAddToCart = () => {
+    addToCart(buildCartItem());
     setCartOpen(true);
+  };
+
+  const handleBuyNow = () => {
+    addToCart(buildCartItem());
+    router.push('/checkout');
   };
 
   return (
@@ -143,9 +152,12 @@ export default function ProductDetailClient({ product, whatsappUrl }: { product:
                 Add to Cart
               </button>
             )}
-            <Link href={whatsappUrl} target="_blank" className="w-full flex items-center justify-center py-5 border border-[#25D366] text-[#25D366] font-heading tracking-widest text-lg uppercase font-bold hover:bg-[#25D366] hover:text-white transition-colors">
-              Order on WhatsApp
-            </Link>
+            <button
+              onClick={handleBuyNow}
+              className="w-full flex items-center justify-center py-5 border border-poshakh-maroon text-poshakh-maroon font-heading tracking-widest text-lg uppercase font-bold hover:bg-poshakh-maroon hover:text-poshakh-gold transition-colors"
+            >
+              Buy Now
+            </button>
           </div>
 
           {/* Accordions */}

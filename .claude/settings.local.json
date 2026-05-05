@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker exec poshakh-api-1 *)",
+      "Bash(curl -sv http://localhost:9000/health)",
+      "Bash(curl -s http://localhost:9000/store/custom -H \"x-publishable-api-key: test\")",
+      "Bash(docker compose *)",
+      "Bash(curl -sf http://localhost:9000/health)",
+      "Bash(curl -s http://localhost:9000/)",
+      "Bash(curl -s http://localhost:9000/health)",
+      "Bash(curl -s http://localhost:9000/store/custom)",
+      "Bash(curl -s -X POST http://localhost:9000/store/auth/send-otp -H 'Content-Type: application/json' -H 'x-publishable-api-key: test' -d '{\"identifier\":\"+919876543210\",\"firstName\":\"Test\",\"lastName\":\"User\"}')",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -sI http://localhost:3000/)",
+      "Bash(curl -s -X POST http://localhost:3000/api/otp/send -H 'Content-Type: application/json' -d '{\"mobile\":\"+919876543210\",\"firstName\":\"Test\",\"lastName\":\"User\"}')",
+      "Bash(docker exec *)",
+      "Bash(curl -sv 'http://localhost:9000/store/products?limit=1' -H 'x-publishable-api-key: pk_bdccf833fdea56037a4d36201e40e6e5ded8ebbc7fff8a97ffb0876bfae84290')",
+      "Bash(curl *)"
+    ]
+  },
+  "outputStyle": "default"
+}

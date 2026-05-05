@@ -38,7 +38,6 @@ export interface ShippingAddress {
 export interface Order {
   id: string;
   paymentId: string;
-  medusaOrderId?: string;
   date: string;
   items: CartItem[];
   subtotal: number;

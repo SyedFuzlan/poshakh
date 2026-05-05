@@ -21,6 +21,9 @@ if (missing.length > 0) {
 // ── App setup ───────────────────────────────────
 const app = express();
 
+// Required for Express to correctly handle HTTPS behind proxies (Railway, Vercel)
+app.set("trust proxy", 1);
+
 // CORS — allow the frontend origin and the dashboard's own origin
 const PORT_NUM = parseInt(process.env.PORT || "9000", 10);
 const selfOrigin = `http://localhost:${PORT_NUM}`;
@@ -60,7 +63,7 @@ app.use("/api/auth", require("./routes/auth"));
 app.use("/api/customers", require("./routes/customers"));
 app.use("/api/products", require("./routes/products"));
 app.use("/api/orders", require("./routes/orders"));
-app.use("/api/payments", require("./routes/payments"));
+app.use("/api/payments", require("./routes/payments").router);
 
 // Health check
 app.get("/", (_req, res) => {

@@ -1,0 +1,22 @@
+npm warn Unknown project config "public-hoist-pattern". This will stop working in the next major version of npm.
+
+> poshakh-api@1.0.0 dev
+> node --watch server.js
+
+📦 Database ready: C:\ai-company\projects\poshakh\backend\data\poshakh.db
+
+  ┌────────────────────────────────────────────────────┐
+  │  🛍️  Poshakh API running                           │
+  │  API:       http://localhost:9000                  │
+  │  Dashboard: http://localhost:9000/dashboard        │
+  └────────────────────────────────────────────────────┘
+    
+Restarting 'server.js'
+📦 Database ready: C:\ai-company\projects\poshakh\backend\data\poshakh.db
+
+  ┌────────────────────────────────────────────────────┐
+  │  🛍️  Poshakh API running                           │
+  │  API:       http://localhost:9000                  │
+  │  Dashboard: http://localhost:9000/dashboard        │
+  └────────────────────────────────────────────────────┘
+    

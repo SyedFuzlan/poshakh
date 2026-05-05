@@ -1,76 +1,130 @@
-<p align="center">
-  <a href="https://www.medusajs.com">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://user-images.githubusercontent.com/59018053/229103275-b5e482bb-4601-46e6-8142-244f531cebdb.svg">
-    <source media="(prefers-color-scheme: light)" srcset="https://user-images.githubusercontent.com/59018053/229103726-e5b529a3-9b3f-4970-8a1f-c6af37f087bf.svg">
-    <img alt="Medusa logo" src="https://user-images.githubusercontent.com/59018053/229103726-e5b529a3-9b3f-4970-8a1f-c6af37f087bf.svg">
-    </picture>
-  </a>
-</p>
-<h1 align="center">
-  Medusa
-</h1>
+# Poshakh Backend API
 
-<h4 align="center">
-  <a href="https://docs.medusajs.com">Documentation</a> |
-  <a href="https://www.medusajs.com">Website</a>
-</h4>
+Simple Express.js + SQLite backend for the Poshakh e-commerce store.
 
-<p align="center">
-  Building blocks for digital commerce
-</p>
-<p align="center">
-  <a href="https://github.com/medusajs/medusa/blob/master/CONTRIBUTING.md">
-    <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat" alt="PRs welcome!" />
-  </a>
-    <a href="https://www.producthunt.com/posts/medusa"><img src="https://img.shields.io/badge/Product%20Hunt-%231%20Product%20of%20the%20Day-%23DA552E" alt="Product Hunt"></a>
-  <a href="https://discord.gg/xpCwq3Kfn8">
-    <img src="https://img.shields.io/badge/chat-on%20discord-7289DA.svg" alt="Discord Chat" />
-  </a>
-  <a href="https://twitter.com/intent/follow?screen_name=medusajs">
-    <img src="https://img.shields.io/twitter/follow/medusajs.svg?label=Follow%20@medusajs" alt="Follow @medusajs" />
-  </a>
-</p>
+## Folder Structure
 
-## Compatibility
+```
+backend/
+  server.js              ← Entry point
+  db.js                  ← SQLite database (sql.js, pure JS)
+  routes/
+    auth.js              ← POST /api/auth/login
+    products.js          ← GET / POST / DELETE /api/products
+    orders.js            ← GET /api/orders, PATCH /api/orders/:id/ship
+    payments.js          ← Razorpay + UPI payment endpoints
+  middleware/
+    requireOwner.js      ← JWT guard for owner-only routes
+  dashboard/
+    index.html           ← Owner dashboard (open in browser)
+  uploads/               ← Product images (created automatically)
+  data/
+    poshakh.db           ← SQLite database file (created automatically)
+  .env                   ← Your secrets (never commit this)
+  .env.example           ← Template — copy to .env and fill in
+```
 
-This starter is compatible with versions >= 2 of `@medusajs/medusa`. 
+---
 
-## Getting Started
+## Run Locally
 
-Visit the [Quickstart Guide](https://docs.medusajs.com/learn/installation) to set up a server.
+### 1. Install dependencies
+```bash
+cd backend
+npm install
+```
 
-Visit the [Docs](https://docs.medusajs.com/learn/installation#get-started) to learn more about our system requirements.
+### 2. Configure your .env
+```bash
+# Edit backend/.env and set:
+OWNER_EMAIL=your@email.com
+OWNER_PASSWORD=YourPassword
+JWT_SECRET=any-long-random-string
+RAZORPAY_KEY_ID=rzp_test_...
+RAZORPAY_KEY_SECRET=...
+```
 
-## What is Medusa
+### 3. Start the server
+```bash
+npm start
+# or for auto-reload during development:
+npm run dev
+```
 
-Medusa is a set of commerce modules and tools that allow you to build rich, reliable, and performant commerce applications without reinventing core commerce logic. The modules can be customized and used to build advanced ecommerce stores, marketplaces, or any product that needs foundational commerce primitives. All modules are open-source and freely available on npm.
+### 4. Open the dashboard
+Navigate to: **http://localhost:9000/dashboard**
 
-Learn more about [Medusa’s architecture](https://docs.medusajs.com/learn/introduction/architecture) and [commerce modules](https://docs.medusajs.com/learn/fundamentals/modules/commerce-modules) in the Docs.
+---
 
-## Build with AI Agents
+## Razorpay Test Keys
 
-### Claude Code Plugin
+1. Go to https://dashboard.razorpay.com
+2. Sign up / Log in
+3. Go to **Settings → API Keys**
+4. Make sure you're in **Test Mode** (toggle at top)
+5. Click **Generate Key** → copy Key ID and Key Secret
+6. Paste into `backend/.env`
 
-If you use AI agents like Claude Code, check out the [medusa-dev Claude Code plugin](https://github.com/medusajs/medusa-claude-plugins).
+**Test card for Razorpay:**
+- Card: `4111 1111 1111 1111`
+- Expiry: any future date
+- CVV: any 3 digits
+- OTP: `1234` (in test mode)
 
-### Other Agents
+**Test UPI:** Use `success@razorpay` as the UPI ID in test mode
 
-If you use AI agents other than Claude Code, copy the [skills directory](https://github.com/medusajs/medusa-claude-plugins/tree/main/plugins/medusa-dev/skills) into your agent's relevant `skills` directory.
+---
 
-### MCP Server
+## API Endpoints
 
-You can also add the MCP server `https://docs.medusajs.com/mcp` to your AI agents to answer questions related to Medusa. The `medusa-dev` Claude Code plugin includes this MCP server by default.
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/products` | Public | List all products |
+| GET | `/api/products/:id` | Public | Single product |
+| POST | `/api/products` | Owner | Add product (multipart/form-data) |
+| DELETE | `/api/products/:id` | Owner | Delete product |
+| POST | `/api/payments/create-order` | Public | Create Razorpay order |
+| POST | `/api/payments/verify` | Public | Verify payment + save order |
+| POST | `/api/payments/upi-confirm` | Public | Save UPI order with UTR |
+| POST | `/api/payments/webhook` | Razorpay | Async payment confirmation |
+| GET | `/api/orders` | Owner | List all orders |
+| GET | `/api/orders/stats` | Owner | Today's stats |
+| PATCH | `/api/orders/:id/ship` | Owner | Mark order as shipped |
+| POST | `/api/auth/login` | — | Owner login |
+| POST | `/api/auth/verify` | Owner | Verify token |
 
-## Community & Contributions
+---
 
-The community and core team are available in [GitHub Discussions](https://github.com/medusajs/medusa/discussions), where you can ask for support, discuss roadmap, and share ideas.
+## Deploy to Railway
 
-Join our [Discord server](https://discord.com/invite/medusajs) to meet other community members.
+1. Go to https://railway.app and create a new project
+2. Click **Deploy from GitHub repo** → connect your repo
+3. Add a service for the **backend** folder:
+   - Root directory: `backend`
+   - Start command: `npm start`
+4. Add the following environment variables in Railway dashboard:
+   ```
+   OWNER_EMAIL=your@email.com
+   OWNER_PASSWORD=YourStrongPassword
+   JWT_SECRET=generate-with-openssl-rand-base64-32
+   STORE_CORS=https://your-frontend-domain.railway.app
+   RAZORPAY_KEY_ID=rzp_live_...
+   RAZORPAY_KEY_SECRET=...
+   RAZORPAY_WEBHOOK_SECRET=...
+   ```
+5. Add a **Volume** in Railway and mount it at `/app/data` to persist the database
+6. Deploy the **frontend** as a separate Railway service:
+   - Root directory: `frontend`
+   - Build command: `npm run build`
+   - Start command: `npm start`
+   - Environment: `NEXT_PUBLIC_MEDUSA_BACKEND_URL=https://your-api.railway.app`
 
-## Other channels
+---
 
-- [GitHub Issues](https://github.com/medusajs/medusa/issues)
-- [Twitter](https://twitter.com/medusajs)
-- [LinkedIn](https://www.linkedin.com/company/medusajs)
-- [Medusa Blog](https://medusajs.com/blog/)
+## Owner Dashboard Login
+
+Default credentials (change these in `.env` before deploying!):
+- **Email:** `admin@poshakh.in`
+- **Password:** `ChangeMe123!`
+
+**⚠️ Change `OWNER_PASSWORD` in `.env` before going live.**

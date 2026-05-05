@@ -46,6 +46,11 @@ async function initDb() {
   } catch (e) {
     if (!e.message?.includes('duplicate column name')) throw e;
   }
+  try {
+    _db.run(`ALTER TABLE orders ADD COLUMN customer_email TEXT`);
+  } catch (e) {
+    if (!e.message?.includes('duplicate column name')) throw e;
+  }
 
   // Phase 01: product variants table — per D-01 / D-02
   _db.run(`

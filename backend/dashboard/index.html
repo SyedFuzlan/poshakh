@@ -408,13 +408,13 @@ function renderProducts(products) {
   const el = document.getElementById('products-grid');
   if (!products.length) { el.innerHTML = '<div class="empty-state">No products yet. Add one above!</div>'; return; }
   el.innerHTML = `<div class="products-grid">${products.map(p => `
-    <div class="product-tile">
+    <div class="product-tile" onclick="openEditModal('${esc(String(p.id))}')" style="cursor:pointer">
       <img src="${esc(p.image_url||'')}" alt="${esc(p.name)}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22220%22 height=%22200%22><rect fill=%22%23f0ece6%22 width=%22100%25%22 height=%22100%25%22/><text x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 fill=%22%23888%22 dy=%22.3em%22 font-size=%2240%22>🛍️</text></svg>'"/>
       <div class="tile-body">
         <div class="tile-name">${esc(p.name)}</div>
         <div class="tile-meta">${esc(p.category)}${p.collection ? ' · ' + esc(p.collection) : ''}</div>
         <div class="tile-price">${esc(p.formattedPrice)}</div>
-        <button class="btn-delete" onclick="deleteProduct('${esc(String(p.id))}','${esc(p.name)}')">DELETE</button>
+        <button class="btn-delete" onclick="event.stopPropagation();deleteProduct('${esc(String(p.id))}','${esc(p.name)}')">DELETE</button>
       </div>
     </div>`).join('')}</div>`;
 }
@@ -532,6 +532,143 @@ async function apiFetch(path, method = 'GET', body = null) {
   return data;
 }
 function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── Edit Modal ────────────────────────────────────────
+let _escKeyHandler = null;
+
+function emToggleStock(cb) {
+  const row = cb.closest('.size-row');
+  const stockInput = document.getElementById('em-stock-' + cb.value);
+  if (cb.checked) {
+    stockInput.style.display = 'inline-block';
+    row.style.borderColor = 'var(--maroon)';
+    row.style.background = 'var(--cream-warm)';
+  } else {
+    stockInput.style.display = 'none';
+    stockInput.value = '0';
+    row.style.borderColor = 'var(--border-subtle)';
+    row.style.background = '#f7f4f0';
+  }
+}
+
+function closeEditModal() {
+  const overlay = document.getElementById('edit-modal-overlay');
+  if (overlay) overlay.remove();
+  if (_escKeyHandler) {
+    document.removeEventListener('keydown', _escKeyHandler);
+    _escKeyHandler = null;
+  }
+}
+
+async function openEditModal(productId) {
+  // Append overlay immediately with loading placeholder (per UI-SPEC loading state)
+  const overlayHtml = `<div id="edit-modal-overlay"
+    style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center"
+    onclick="if(event.target===this)closeEditModal()">
+    <div class="em-dialog" style="background:#fff;border-radius:8px;padding:32px;width:min(560px,92vw);max-height:90vh;overflow-y:auto;position:relative;border:1px solid var(--border-subtle);box-shadow:0 20px 60px rgba(0,0,0,.2)" onclick="event.stopPropagation()">
+      <div style="text-align:center;padding:40px;color:#888">Loading...</div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', overlayHtml);
+
+  // Escape key closes modal (IC-02); store handler reference to remove on close
+  _escKeyHandler = (e) => { if (e.key === 'Escape') closeEditModal(); };
+  document.addEventListener('keydown', _escKeyHandler);
+
+  // Fetch fresh product data (D-03)
+  let p;
+  try {
+    const data = await apiFetch('/api/products/' + productId);
+    p = data.product;
+  } catch (e) {
+    closeEditModal();
+    alert('Failed to load product: ' + e.message);
+    return;
+  }
+
+  const existingSizes = new Set(p.variants.map(v => v.size));
+  const stockMap = Object.fromEntries(p.variants.map(v => [v.size, v.stock]));
+  const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Free Size'];
+
+  const pillsHtml = SIZES.map(sz => {
+    const checked = existingSizes.has(sz) ? 'checked' : '';
+    const stockVal = stockMap[sz] !== undefined ? stockMap[sz] : 0;
+    const display = existingSizes.has(sz) ? 'inline-block' : 'none';
+    const pillBg = existingSizes.has(sz) ? 'var(--cream-warm)' : '#f7f4f0';
+    const pillBorder = existingSizes.has(sz) ? 'var(--maroon)' : 'var(--border-subtle)';
+    return `<div class="size-row" style="display:flex;align-items:center;gap:8px;background:${pillBg};border:1px solid ${pillBorder};border-radius:4px;padding:8px 12px">
+      <input type="checkbox" id="em-size-${esc(sz)}" name="em-sizes[]" value="${esc(sz)}" ${checked} onchange="emToggleStock(this)" style="width:16px;height:16px;accent-color:var(--maroon);cursor:pointer"/>
+      <label for="em-size-${esc(sz)}" style="font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;min-width:36px">${esc(sz)}</label>
+      <input type="number" id="em-stock-${esc(sz)}" min="0" value="${stockVal}" placeholder="qty" style="display:${display};width:72px;height:32px;border:1px solid #ddd;border-radius:4px;padding:0 8px;font-size:12px;text-align:center"/>
+    </div>`;
+  }).join('');
+
+  const formHtml = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px">
+      <h2 style="font-size:16px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--maroon)">EDIT PRODUCT</h2>
+      <button onclick="closeEditModal()" aria-label="Close edit modal" style="background:none;border:none;font-size:24px;color:#888;cursor:pointer;line-height:1">×</button>
+    </div>
+    <div class="field" style="margin-bottom:16px">
+      <label class="pf-label" for="em-name">Product Name</label>
+      <input class="pf-input" type="text" id="em-name" value="${esc(p.name)}" style="width:100%;height:44px;border:1px solid #ddd;padding:0 12px;font-size:14px;border-radius:4px;outline:none"/>
+    </div>
+    <div class="field" style="margin-bottom:16px">
+      <label class="pf-label" for="em-price">Price (₹ INR)</label>
+      <input class="pf-input" type="number" id="em-price" min="1" value="${esc(String(p.price))}" style="width:100%;height:44px;border:1px solid #ddd;padding:0 12px;font-size:14px;border-radius:4px;outline:none"/>
+    </div>
+    <div class="field" style="margin-bottom:16px">
+      <label class="pf-label" for="em-description">Description (optional)</label>
+      <textarea class="pf-input" id="em-description" rows="4" style="width:100%;border:1px solid #ddd;padding:8px 12px;font-size:14px;border-radius:4px;outline:none;resize:vertical">${esc(p.description || '')}</textarea>
+    </div>
+    <div class="field" style="margin-bottom:16px">
+      <label class="pf-label">Sizes &amp; Stock *</label>
+      <div id="em-sizes-container" style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+        ${pillsHtml}
+      </div>
+      <p id="em-sizes-error" style="color:var(--error);font-size:12px;margin-top:8px;display:none">Select at least one size.</p>
+    </div>
+    <div style="display:flex;gap:16px;margin-top:24px;justify-content:flex-end">
+      <button onclick="closeEditModal()" style="background:none;border:1px solid #ddd;color:var(--charcoal);padding:14px 32px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;min-height:44px">DISCARD CHANGES</button>
+      <button class="btn-save" onclick="saveEditModal('${esc(String(p.id))}')" style="min-height:44px;padding:14px 32px">SAVE CHANGES</button>
+    </div>`;
+
+  // Replace loading placeholder with full form
+  const dialog = document.querySelector('#edit-modal-overlay .em-dialog');
+  if (dialog) dialog.innerHTML = formHtml;
+}
+
+async function saveEditModal(productId) {
+  const name = (document.getElementById('em-name').value || '').trim();
+  const price = (document.getElementById('em-price').value || '').trim();
+  const description = (document.getElementById('em-description').value || '').trim();
+
+  if (!name || !price) { alert('Name and price are required.'); return; }
+
+  const checkedSizes = [...document.querySelectorAll('input[name="em-sizes[]"]:checked')];
+  const sizesError = document.getElementById('em-sizes-error');
+  if (checkedSizes.length === 0) {
+    sizesError.style.display = 'block';
+    return;
+  }
+  sizesError.style.display = 'none';
+
+  const sizes = checkedSizes.map(cb => cb.value);
+  const stock = checkedSizes.map(cb => {
+    const input = document.getElementById('em-stock-' + cb.value);
+    return input ? parseInt(input.value || '0', 10) : 0;
+  });
+
+  try {
+    await apiFetch('/api/products/' + productId, 'PATCH', {
+      name, price: parseFloat(price), description, sizes, stock
+    });
+    closeEditModal();
+    loadProducts();
+  } catch (e) {
+    alert('Failed to save: ' + e.message);
+    // Modal stays open on error (IC-04 step 7)
+  }
+}
 </script>
 </body>
 </html>
