@@ -73,6 +73,10 @@ function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOrderId,
   };
 
   safeMigrate('ALTER TABLE orders ADD COLUMN razorpay_payment_id TEXT');
+  safeMigrate('ALTER TABLE orders ADD COLUMN customer_name TEXT');
+  safeMigrate('ALTER TABLE orders ADD COLUMN customer_phone TEXT');
+  safeMigrate('ALTER TABLE orders ADD COLUMN customer_email TEXT');
+  safeMigrate('ALTER TABLE orders ADD COLUMN payment_method TEXT');
   safeMigrate('ALTER TABLE orders ADD COLUMN address_line1 TEXT');
   safeMigrate('ALTER TABLE orders ADD COLUMN address_line2 TEXT');
   safeMigrate('ALTER TABLE orders ADD COLUMN city TEXT');
@@ -91,13 +95,13 @@ function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOrderId,
       customer_name, customer_phone, customer_email,
       address_line1, address_line2, city, state, pin_code,
       items_json, subtotal_paise, shipping_method, shipping_cost_paise,
-      total_paise, status
+      total_paise, total_amount, status
     ) VALUES (
       ?, ?, ?, ?, ?,
       ?, ?, ?,
       ?, ?, ?, ?, ?,
       ?, ?, ?, ?,
-      ?, ?
+      ?, ?, ?
     )
   `).run(
     orderId,
@@ -118,6 +122,7 @@ function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOrderId,
     shipping_method,
     Math.round(shipping_cost * 100),
     Math.round(total * 100),
+    total,           // total_amount — original NOT NULL column
     status
   );
 }
