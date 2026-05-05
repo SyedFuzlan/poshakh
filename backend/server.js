@@ -24,35 +24,26 @@ const app = express();
 // Required for Express to correctly handle HTTPS behind proxies (Railway, Vercel)
 app.set("trust proxy", 1);
 
-// CORS — allow the frontend origin and the dashboard's own origin
-const PORT_NUM = parseInt(process.env.PORT || "9000", 10);
-const selfOrigin = `http://localhost:${PORT_NUM}`;
-const allowedOrigins = [
-  selfOrigin,
-  ...(process.env.STORE_CORS || "http://localhost:3000")
-    .split(",")
-    .map((o) => o.trim()),
-];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // 1. Allow no-origin (Server-to-server, curl)
+      // Allow no-origin requests (curl, Postman, SSR, etc.)
       if (!origin) return callback(null, true);
 
-      // 2. Allow explicitly whitelisted origins (from STORE_CORS)
-      if (allowedOrigins.includes(origin)) return callback(null, true);
+      // Always allow Railway and Vercel deployments for this app
+      if (
+        origin.endsWith('.up.railway.app') ||
+        origin.endsWith('.vercel.app') ||
+        origin === 'http://localhost:3000' ||
+        origin === 'http://localhost:9000'
+      ) {
+        return callback(null, true);
+      }
 
-      // 3. Auto-allow requests from the same domain (for Dashboard)
-      // This is helpful if the public URL isn't in STORE_CORS yet
-      if (process.env.RAILWAY_STATIC_URL && origin.includes(process.env.RAILWAY_STATIC_URL)) {
-        return callback(null, true);
-      }
-      
-      // Fallback for custom domains on Railway
-      if (origin.endsWith(".up.railway.app")) {
-        return callback(null, true);
-      }
+      // Allow explicitly configured origins from env
+      const extras = (process.env.STORE_CORS || '').split(',').map(o => o.trim()).filter(Boolean);
+      if (extras.includes(origin)) return callback(null, true);
 
       callback(new Error(`CORS: origin ${origin} not allowed`));
     },

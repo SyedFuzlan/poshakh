@@ -41,13 +41,15 @@ const upload = multer({
 
 // Helper — format a DB row to the shape the frontend expects
 function formatProduct(row, variants = []) {
-  const priceRupees = Math.round(row.price_paise / 100);
+  // Support both price_paise (new) and price (legacy) columns
+  const paise = row.price_paise || Math.round((row.price || 0) * 100);
+  const priceRupees = Math.round(paise / 100);
   return {
     id: String(row.id),
     name: row.name,
     price: priceRupees,
     formattedPrice: `₹${priceRupees.toLocaleString("en-IN")}`,
-    price_paise: row.price_paise,
+    price_paise: paise,
     category: row.category,
     collection: row.collection || "",
     images: row.image_url ? [row.image_url] : [],

@@ -45,6 +45,7 @@ function validateOrderData(data) {
 }
 
 // ── Save order to DB ────────────────────────────
+// Uses a flat orders table that stores address fields inline + items as JSON.
 function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOrderId, utr, orderData }) {
   const {
     customer_name,
@@ -57,6 +58,32 @@ function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOrderId,
     shipping_cost = 0,
     total,
   } = orderData;
+
+  const status = paymentMethod === "upi"
+    ? "pending_verification"
+    : paymentMethod.toUpperCase() === "COD"
+      ? "pending"
+      : "paid";
+
+  // Ensure the orders table has all required columns (graceful degradation)
+  const safeMigrate = (sql) => {
+    try { db.prepare(sql).run(); } catch (e) {
+      if (!String(e.message).includes('duplicate column')) console.error('[orders migration]', e.message);
+    }
+  };
+
+  safeMigrate('ALTER TABLE orders ADD COLUMN razorpay_payment_id TEXT');
+  safeMigrate('ALTER TABLE orders ADD COLUMN address_line1 TEXT');
+  safeMigrate('ALTER TABLE orders ADD COLUMN address_line2 TEXT');
+  safeMigrate('ALTER TABLE orders ADD COLUMN city TEXT');
+  safeMigrate('ALTER TABLE orders ADD COLUMN state TEXT');
+  safeMigrate('ALTER TABLE orders ADD COLUMN pin_code TEXT');
+  safeMigrate('ALTER TABLE orders ADD COLUMN items_json TEXT');
+  safeMigrate('ALTER TABLE orders ADD COLUMN subtotal_paise INTEGER');
+  safeMigrate('ALTER TABLE orders ADD COLUMN shipping_method TEXT');
+  safeMigrate('ALTER TABLE orders ADD COLUMN shipping_cost_paise INTEGER');
+  safeMigrate('ALTER TABLE orders ADD COLUMN total_paise INTEGER');
+  safeMigrate('ALTER TABLE orders ADD COLUMN shipped_at TEXT');
 
   db.prepare(`
     INSERT INTO orders (
@@ -87,16 +114,15 @@ function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOrderId,
     address.state.trim(),
     address.pin_code.trim(),
     JSON.stringify(items),
-    Math.round(subtotal * 100),    // store in paise
+    Math.round(subtotal * 100),
     shipping_method,
     Math.round(shipping_cost * 100),
     Math.round(total * 100),
-    paymentMethod === "upi" ? "pending_verification" : (paymentMethod.toUpperCase() === "COD" ? "pending" : "paid")
+    status
   );
 }
 
 // ── POST /api/payments/create-order ────────────
-// Creates a Razorpay order. Does NOT save to DB yet (payment might fail).
 router.post("/create-order", async (req, res) => {
   try {
     const { amount_in_rupees } = req.body;
@@ -107,7 +133,7 @@ router.post("/create-order", async (req, res) => {
 
     const razorpay = getRazorpay();
     const rzpOrder = await razorpay.orders.create({
-      amount: Math.round(amount_in_rupees * 100), // paise
+      amount: Math.round(amount_in_rupees * 100),
       currency: "INR",
       receipt: `psk_${Date.now()}`,
     });
@@ -125,7 +151,6 @@ router.post("/create-order", async (req, res) => {
 });
 
 // ── POST /api/payments/verify ───────────────────
-// Verifies Razorpay signature, saves confirmed order to DB.
 router.post("/verify", async (req, res) => {
   try {
     const {
@@ -144,18 +169,15 @@ router.post("/verify", async (req, res) => {
       return res.status(400).json({ error: validationError });
     }
 
-    // Verify signature — this is how we confirm Razorpay actually received payment
     const expectedSig = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest("hex");
 
     if (expectedSig !== razorpay_signature) {
-      console.error("Payment signature mismatch!", { razorpay_order_id, razorpay_payment_id });
       return res.status(400).json({ success: false, error: "Payment verification failed" });
     }
 
-    // Check for duplicate (idempotent — safe if frontend retries)
     const existing = db
       .prepare("SELECT id FROM orders WHERE razorpay_payment_id = ?")
       .get(razorpay_payment_id);
@@ -183,7 +205,6 @@ router.post("/verify", async (req, res) => {
 });
 
 // ── POST /api/payments/upi-confirm ─────────────
-// Customer manually enters UTR after UPI transfer. Saved as pending_verification.
 router.post("/upi-confirm", (req, res) => {
   try {
     const { utr, order_data } = req.body;
@@ -197,7 +218,6 @@ router.post("/upi-confirm", (req, res) => {
       return res.status(400).json({ error: validationError });
     }
 
-    // Prevent duplicate UTR submissions
     const existing = db.prepare("SELECT id FROM orders WHERE utr = ?").get(utr.trim());
     if (existing) {
       return res.json({ success: true, order_id: existing.id, duplicate: true });
@@ -222,11 +242,9 @@ router.post("/upi-confirm", (req, res) => {
 });
 
 // ── POST /api/payments/webhook ──────────────────
-// Razorpay calls this asynchronously. Used as a fallback to catch payments
-// that may have slipped through (e.g. browser crash after payment).
 router.post(
   "/webhook",
-  express.raw({ type: "application/json" }), // raw body for signature check
+  express.raw({ type: "application/json" }),
   (req, res) => {
     try {
       const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
@@ -242,12 +260,10 @@ router.post(
         .digest("hex");
 
       if (signature !== expectedSig) {
-        console.error("Webhook signature mismatch");
         return res.status(400).json({ error: "Invalid webhook signature" });
       }
 
       const event = JSON.parse(req.body.toString());
-      console.log(`📨 Razorpay webhook: ${event.event}`);
 
       if (event.event === "payment.captured") {
         const payment = event.payload?.payment?.entity;
@@ -256,16 +272,12 @@ router.post(
             .prepare("SELECT id FROM orders WHERE razorpay_payment_id = ?")
             .get(payment.id);
 
-          if (!existing) {
-            // Payment captured but order not in DB (e.g. verify call failed)
-            // Mark for manual review — we log but don't auto-create the order
-            // because we don't have the shipping address from the webhook alone
-            console.error(`⚠️  Orphaned payment ${payment.id} — not in orders DB. Manual review needed.`);
-          } else {
-            // Ensure status is 'paid'
+          if (existing) {
             db.prepare(
               "UPDATE orders SET status = 'paid' WHERE id = ? AND status = 'pending_verification'"
             ).run(existing.id);
+          } else {
+            console.error(`⚠️  Orphaned payment ${payment.id} — not in orders DB.`);
           }
         }
       }
