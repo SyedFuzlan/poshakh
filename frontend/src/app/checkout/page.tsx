@@ -327,8 +327,30 @@ export default function CheckoutPage() {
               </div>
 
               <div style={{ marginBottom: "28px" }}>
-                <label style={labelStyle}>Phone</label>
-                <input type="tel" value={addr.phone} onChange={e => handleAddrChange("phone", e.target.value)} required style={inputStyle} />
+                <label style={labelStyle}>Phone (10-digit Indian number)</label>
+                <input
+                  type="tel"
+                  value={addr.phone}
+                  onChange={e => {
+                    const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
+                    handleAddrChange("phone", digits);
+                  }}
+                  required
+                  maxLength={10}
+                  minLength={10}
+                  pattern="[6-9][0-9]{9}"
+                  title="Enter a valid 10-digit Indian mobile number starting with 6, 7, 8 or 9"
+                  placeholder="e.g. 9876543210"
+                  style={{
+                    ...inputStyle,
+                    borderColor: addr.phone.length > 0 && (addr.phone.length !== 10 || !/^[6-9]/.test(addr.phone)) ? "#ef4444" : "#d1d5db",
+                  }}
+                />
+                {addr.phone.length > 0 && addr.phone.length < 10 && (
+                  <p style={{ fontSize: "11px", color: "#ef4444", marginTop: "4px" }}>
+                    {10 - addr.phone.length} more digit{10 - addr.phone.length !== 1 ? "s" : ""} needed
+                  </p>
+                )}
               </div>
 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>

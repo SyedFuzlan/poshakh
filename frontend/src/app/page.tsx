@@ -1,7 +1,7 @@
 import HeroBanner from "@/components/HeroBanner";
 import CategoryTiles from "@/components/CategoryTiles";
-import TrustBar from "@/components/TrustBar";
 import SecondaryHero from "@/components/SecondaryHero";
+import FeaturedProducts from "@/components/FeaturedProducts";
 import SocialGrid from "@/components/SocialGrid";
 
 export default function Home() {
@@ -9,8 +9,8 @@ export default function Home() {
     <>
       <HeroBanner />
       <CategoryTiles />
-      <TrustBar />
       <SecondaryHero />
+      <FeaturedProducts />
       <SocialGrid />
     </>
   );
