@@ -106,3 +106,65 @@ export async function initDb() {
                                                                                                                     return results;
                                                                                                                     }
                                                                                                                     
+razorpay_order_id TEXT,
+      created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+          );
+              CREATE TABLE IF NOT EXISTS order_items (
+                    id TEXT PRIMARY KEY,
+                          order_id TEXT NOT NULL,
+                                product_id TEXT NOT NULL,
+                                      variant_id TEXT,
+                                            quantity INTEGER NOT NULL,
+                                                  price REAL NOT NULL,
+                                                        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+                                                              FOREIGN KEY (product_id) REFERENCES products(id)
+                                                                  );
+                                                                      CREATE TABLE IF NOT EXISTS customers (
+                                                                            id TEXT PRIMARY KEY,
+                                                                                  first_name TEXT NOT NULL DEFAULT '',
+                                                                                        last_name TEXT NOT NULL DEFAULT '',
+                                                                                              phone TEXT UNIQUE,
+                                                                                                    email TEXT UNIQUE,
+                                                                                                          password_hash TEXT NOT NULL,
+                                                                                                                created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+                                                                                                                      last_login TEXT
+                                                                                                                          );
+                                                                                                                            \`);
+                                                                                                                              try {
+                                                                                                                                  _db.run(\`ALTER TABLE products ADD COLUMN brand TEXT\`);
+                                                                                                                                    } catch (e) {
+                                                                                                                                        if (!e.message?.includes('duplicate column name')) console.error(e);
+                                                                                                                                          }
+                                                                                                                                            saveDb();
+                                                                                                                                              return _db;
+                                                                                                                                              }
+                                                                                                                                              
+                                                                                                                                              export function saveDb() {
+                                                                                                                                                if (!_db) return;
+                                                                                                                                                  const data = _db.export();
+                                                                                                                                                    fs.writeFileSync(DB_PATH, Buffer.from(data));
+                                                                                                                                                    }
+                                                                                                                                                    
+                                                                                                                                                    export function getDb() {
+                                                                                                                                                      if (!_db) throw new Error("DB not init");
+                                                                                                                                                        return _db;
+                                                                                                                                                        }
+                                                                                                                                                        
+                                                                                                                                                        export function prepare(sql) { return getDb().prepare(sql); }
+                                                                                                                                                        export function run(sql, params) { return getDb().run(sql, params); }
+                                                                                                                                                        export function get(sql, params) {
+                                                                                                                                                          const stmt = getDb().prepare(sql);
+                                                                                                                                                            if (params) stmt.bind(params);
+                                                                                                                                                              const result = stmt.step() ? stmt.getAsObject() : null;
+                                                                                                                                                                stmt.free();
+                                                                                                                                                                  return result;
+                                                                                                                                                                  }
+                                                                                                                                                                  export function all(sql, params) {
+                                                                                                                                                                    const stmt = getDb().prepare(sql);
+                                                                                                                                                                      if (params) stmt.bind(params);
+                                                                                                                                                                        const results = [];
+                                                                                                                                                                          while (stmt.step()) results.push(stmt.getAsObject());
+                                                                                                                                                                            stmt.free();
+                                                                                                                                                                              return results;
+                                                                                                                                                                              }
+                                                                                                                                                                              
