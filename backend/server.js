@@ -37,8 +37,23 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (curl, Postman, same-origin requests)
-      if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+      // 1. Allow no-origin (Server-to-server, curl)
+      if (!origin) return callback(null, true);
+
+      // 2. Allow explicitly whitelisted origins (from STORE_CORS)
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+
+      // 3. Auto-allow requests from the same domain (for Dashboard)
+      // This is helpful if the public URL isn't in STORE_CORS yet
+      if (process.env.RAILWAY_STATIC_URL && origin.includes(process.env.RAILWAY_STATIC_URL)) {
+        return callback(null, true);
+      }
+      
+      // Fallback for custom domains on Railway
+      if (origin.endsWith(".up.railway.app")) {
+        return callback(null, true);
+      }
+
       callback(new Error(`CORS: origin ${origin} not allowed`));
     },
     credentials: true,
