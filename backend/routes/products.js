@@ -155,22 +155,23 @@ router.post(
         ? `${baseUrl}/uploads/${req.file.filename}`
         : "";
 
-      const result = db
-        .prepare(
-          `INSERT INTO products (name, price, price_paise, category, collection, image_url, description)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`
-        )
-        .run(
+      // Generate UUID so id is never null (live DB uses TEXT PRIMARY KEY)
+      const { randomUUID } = require("crypto");
+      const productId = randomUUID();
+
+      db.prepare(
+          `INSERT INTO products (id, name, price, price_paise, category, collection, image_url, description)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        ).run(
+          productId,
           name.trim(),
           priceNum,
-          Math.round(priceNum * 100), // store in paise
+          Math.round(priceNum * 100),
           category.trim().toLowerCase(),
           (collection || "").trim(),
           imageUrl,
           (description || "").trim() || null
         );
-
-      const productId = result.lastInsertRowid;
       const VALID_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Free Size'];
       sizes.forEach((size, i) => {
         if (!VALID_SIZES.includes(size)) return; // discard unknown sizes
