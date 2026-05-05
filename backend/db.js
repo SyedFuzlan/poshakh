@@ -1,11 +1,11 @@
-import initSqlJs from 'sql.js';
-import fs from 'fs';
-import path from 'path';
+const initSqlJs = require('sql.js');
+const fs = require('fs');
+const path = require('path');
 
 const DB_PATH = process.env.DATABASE_PATH || './poshakh.db';
 let _db = null;
 
-export async function initDb() {
+async function initDb() {
   if (_db) return _db;
 
   const SQL = await initSqlJs();
@@ -78,7 +78,7 @@ export async function initDb() {
 
   // 2. Migrations
   try {
-    _db.run(`ALTER TABLE products ADD COLUMN brand TEXT`);
+    _db.run(\`ALTER TABLE products ADD COLUMN brand TEXT\`);
   } catch (e) {
     // Ignore duplicate column error
     if (!e.message?.includes('duplicate column name')) {
@@ -91,27 +91,27 @@ export async function initDb() {
   return _db;
 }
 
-export function saveDb() {
+function saveDb() {
   if (!_db) return;
   const data = _db.export();
   const buffer = Buffer.from(data);
   fs.writeFileSync(DB_PATH, buffer);
 }
 
-export function getDb() {
+function getDb() {
   if (!_db) throw new Error("Database not initialized. Call initDb() first.");
   return _db;
 }
 
-export function prepare(sql) {
+function prepare(sql) {
   return getDb().prepare(sql);
 }
 
-export function run(sql, params) {
+function run(sql, params) {
   return getDb().run(sql, params);
 }
 
-export function get(sql, params) {
+function get(sql, params) {
   const stmt = getDb().prepare(sql);
   if (params) {
     stmt.bind(params);
@@ -121,7 +121,7 @@ export function get(sql, params) {
   return result;
 }
 
-export function all(sql, params) {
+function all(sql, params) {
   const stmt = getDb().prepare(sql);
   if (params) {
     stmt.bind(params);
@@ -133,3 +133,14 @@ export function all(sql, params) {
   stmt.free();
   return results;
 }
+
+module.exports = {
+  initDb,
+  saveDb,
+  getDb,
+  prepare,
+  run,
+  get,
+  all,
+  db: { prepare, run, get, all }
+};
