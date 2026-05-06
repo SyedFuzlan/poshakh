@@ -107,7 +107,11 @@ export default function Navbar() {
             <button
               onClick={() => {
                 if (!isSessionReady) return;
-                customer ? router.push("/account") : setAccountDrawerOpen(true);
+                if (customer) {
+                  router.push("/account");
+                } else {
+                  setAccountDrawerOpen(true);
+                }
               }}
               aria-label="Account"
               className={`hidden lg:block transition-colors ${iconColor}`}

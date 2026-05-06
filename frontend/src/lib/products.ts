@@ -10,8 +10,18 @@ const FALLBACK_IMAGES_BY_CATEGORY: Record<string, string[]> = {
   gowns:   ["/images/products/gown1.png"],
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapProduct(p: any): Product {
+interface RawProduct {
+  id: number | string;
+  name: string;
+  price: number;
+  formattedPrice: string;
+  images?: string[];
+  category: string;
+  description?: string;
+  variants?: any[];
+}
+
+function mapProduct(p: RawProduct): Product {
   return {
     id:             String(p.id),
     name:           p.name,
@@ -61,7 +71,7 @@ export async function getSimilarProducts(productId: string, category: string, pr
     if (!res.ok) return [];
     const { products: raw } = await res.json();
     
-    let products = (raw as any[]).map(mapProduct).filter((p: Product) => p.id !== productId);
+    let products = (raw as RawProduct[]).map(mapProduct).filter((p: Product) => p.id !== productId);
     
     if (price) {
       // Filter products within +/- 30% price range
@@ -88,7 +98,7 @@ export async function getProductSiblings(product: Product): Promise<Product[]> {
     if (!res.ok) return [];
     const { products: raw } = await res.json();
     
-    const allInCat = (raw as any[]).map(mapProduct);
+    const allInCat = (raw as RawProduct[]).map(mapProduct);
     
     // Simple heuristic: siblings have same base name
     // (e.g. "Saree - Red" and "Saree - Blue" both have "Saree")
@@ -103,4 +113,4 @@ export async function getProductSiblings(product: Product): Promise<Product[]> {
 
 // Legacy no-op exports — kept so any import of these names doesn't break
 export const products: Product[] = [];
-export const getProductsByCategory = (_cat: string): Product[] => [];
+export const getProductsByCategory = (): Product[] => [];

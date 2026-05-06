@@ -17,9 +17,15 @@ const INDIAN_STATES = [
   "Uttarakhand","West Bengal","Delhi","Jammu & Kashmir","Ladakh",
 ];
 
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 function loadRazorpayScript(): Promise<boolean> {
   return new Promise((resolve) => {
-    if ((window as any).Razorpay) return resolve(true);
+    if (window.Razorpay) return resolve(true);
     const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
     script.onload = () => resolve(true);
@@ -42,7 +48,7 @@ const labelStyle: React.CSSProperties = {
 type Step = 1 | 2 | 3;
 type UpiStep = "idle" | "awaiting" | "confirming";
 
-interface ShippingOption { id: string; name: string; amount: number; }
+// interface ShippingOption { id: string; name: string; amount: number; }
 
 export default function CheckoutPage() {
   const { cart, customer, savedAddress, setSavedAddress, clearCart, setPendingOrder, addOrder } = useStore();
@@ -140,6 +146,7 @@ export default function CheckoutPage() {
     router.push(`/order-confirmation?paymentId=${paymentId}`);
   };
 
+  /* Razorpay and UPI temporarily disabled for launch
   const handleRazorpay = async () => {
     setPaying(true);
     try {
@@ -156,7 +163,7 @@ export default function CheckoutPage() {
 
       const orderData = buildOrderData("razorpay");
 
-      const rzp = new (window as any).Razorpay({
+      const rzp = new window.Razorpay({
         key: data.key_id,
         amount: data.amount,
         currency: data.currency,
@@ -169,7 +176,7 @@ export default function CheckoutPage() {
           contact: addr.phone,
         },
         theme: { color: "#3D0D16" },
-        handler: async (response: any) => {
+        handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
           const verify = await fetch(`${BACKEND}/api/payments/verify`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -199,6 +206,7 @@ export default function CheckoutPage() {
     setUpiUtr("");
     setUpiStep("awaiting");
   };
+  */
 
   const handleUpiConfirm = async () => {
     if (!upiUtr.trim()) {

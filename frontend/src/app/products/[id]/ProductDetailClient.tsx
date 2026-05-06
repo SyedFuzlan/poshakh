@@ -60,13 +60,6 @@ export default function ProductDetailClient({ product }: { product: Product }) {
         lib.getProductSiblings(product).then(setSiblings);
       });
     }
-  }, [product?.id, product?.category, product?.price]);
-
-  // Sync state when product changes
-  useEffect(() => {
-    setActiveImage(product?.images?.[0] ?? "");
-    const firstInStock = product?.variants?.find(v => v.stock > 0)?.size ?? null;
-    setSelectedSize(firstInStock);
   }, [product]);
 
   if (!product || !product.images || product.images.length === 0) {
@@ -74,7 +67,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   }
 
   // ── Color variants: derive from product name
-  const productColor = inferColor(product.name);
+  // const productColor = inferColor(product.name);
 
   const buildCartItem = () => {
     const variant = isStitching ? undefined : product.variants?.find(v => v.size === selectedSize);
