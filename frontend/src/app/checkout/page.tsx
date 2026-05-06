@@ -445,7 +445,7 @@ export default function CheckoutPage() {
                 >
                   {upiStep !== "idle" ? "CANCEL UPI PAYMENT" : `PAY ₹${total.toLocaleString("en-IN")} WITH UPI / PHONEPE / GPAY`}
                 </button>
-                */
+                */}
 
                 {/* COD */}
                 <button
