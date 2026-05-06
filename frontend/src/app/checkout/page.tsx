@@ -17,23 +17,6 @@ const INDIAN_STATES = [
   "Uttarakhand","West Bengal","Delhi","Jammu & Kashmir","Ladakh",
 ];
 
-declare global {
-  interface Window {
-    Razorpay: any;
-  }
-}
-
-function loadRazorpayScript(): Promise<boolean> {
-  return new Promise((resolve) => {
-    if (window.Razorpay) return resolve(true);
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-}
-
 const inputStyle: React.CSSProperties = {
   width: "100%", height: "44px", border: "1px solid #d1d5db", padding: "0 12px",
   fontSize: "14px", color: "#1A1410", background: "#fff", outline: "none",
@@ -145,68 +128,6 @@ export default function CheckoutPage() {
     clearCart();
     router.push(`/order-confirmation?paymentId=${paymentId}`);
   };
-
-  /* Razorpay and UPI temporarily disabled for launch
-  const handleRazorpay = async () => {
-    setPaying(true);
-    try {
-      const loaded = await loadRazorpayScript();
-      if (!loaded) { alert("Could not load payment gateway. Please try again."); return; }
-
-      const res = await fetch(`${BACKEND}/api/payments/create-order`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount_in_rupees: total }),
-      });
-      const data = await res.json();
-      if (!data.razorpay_order_id) throw new Error(data.error ?? "Order creation failed");
-
-      const orderData = buildOrderData("razorpay");
-
-      const rzp = new window.Razorpay({
-        key: data.key_id,
-        amount: data.amount,
-        currency: data.currency,
-        name: "ZOHRA",
-        description: `${cart.length} item${cart.length > 1 ? "s" : ""}`,
-        order_id: data.razorpay_order_id,
-        prefill: {
-          name: `${addr.firstName} ${addr.lastName}`.trim(),
-          email: customer?.email ?? guestEmail,
-          contact: addr.phone,
-        },
-        theme: { color: "#3D0D16" },
-        handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
-          const verify = await fetch(`${BACKEND}/api/payments/verify`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-              order_data: orderData,
-            }),
-          });
-          const vData = await verify.json();
-          if (vData.success) finishOrder(response.razorpay_payment_id);
-          else alert("Payment verification failed. Contact support.");
-        },
-      });
-      rzp.on("payment.failed", () => alert("Payment failed. Please try again."));
-      rzp.open();
-    } catch (err) {
-      console.error(err);
-      alert(err instanceof Error ? err.message : "Something went wrong. Please try again.");
-    } finally {
-      setPaying(false);
-    }
-  };
-
-  const handleUPI = () => {
-    setUpiUtr("");
-    setUpiStep("awaiting");
-  };
-  */
 
   const handleUpiConfirm = async () => {
     if (!upiUtr.trim()) {

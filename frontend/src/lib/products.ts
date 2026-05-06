@@ -18,7 +18,7 @@ interface RawProduct {
   images?: string[];
   category: string;
   description?: string;
-  variants?: any[];
+  variants?: Product["variants"];
 }
 
 function mapProduct(p: RawProduct): Product {
