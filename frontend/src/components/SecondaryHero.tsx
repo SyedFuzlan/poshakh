@@ -5,7 +5,7 @@ export default function SecondaryHero() {
     <section className="w-full relative overflow-hidden" style={{ height: "120vh" }}>
       <Image
         src="/images/hero/image.png"
-        alt="Poshakh Showcase"
+        alt="ZOHRA Showcase"
         fill
         className="object-cover object-center"
         sizes="100vw"

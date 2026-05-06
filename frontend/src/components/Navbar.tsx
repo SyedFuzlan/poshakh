@@ -60,17 +60,18 @@ export default function Navbar() {
             className="flex flex-col items-center justify-center text-center absolute left-1/2 -translate-x-1/2 lg:static lg:left-auto lg:translate-x-0"
           >
             <span
-              className={`font-heading font-medium leading-none transition-colors ${logoColor}`}
-              style={{ fontSize: "32px", letterSpacing: "2px" }}
-            >
-              POSHAKH
-            </span>
-            <span
               className={`font-body uppercase transition-colors mt-1 ${taglineColor}`}
               style={{ fontSize: "8px", letterSpacing: "2px" }}
             >
-              HYDERABADI DESIGNER WEAR
+              MADE BY
             </span>
+            <span
+              className={`font-heading font-medium leading-none transition-colors ${logoColor}`}
+              style={{ fontSize: "32px", letterSpacing: "2px" }}
+            >
+              ZOHRA
+            </span>
+
           </Link>
 
           {/* Nav Links — desktop only, middle */}

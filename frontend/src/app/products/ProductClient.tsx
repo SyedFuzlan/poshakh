@@ -61,12 +61,12 @@ export default function ProductClient({
         </h3>
         <div className="space-y-3">
           {["Silk", "Georgette", "Velvet", "Net", "Cotton"].map((f) => (
-            <label key={f} className="flex items-center gap-2.5 cursor-pointer text-sm text-[#444] hover:text-poshakh-maroon transition-colors">
+            <label key={f} className="flex items-center gap-2.5 cursor-pointer text-sm text-[#444] hover:text-zohra-maroon transition-colors">
               <input
                 type="checkbox"
                 checked={selectedFabrics.includes(f)}
                 onChange={() => toggleFabric(f)}
-                className="accent-poshakh-maroon"
+                className="accent-zohra-maroon"
               />
               {f}
             </label>
@@ -80,12 +80,12 @@ export default function ProductClient({
         </h3>
         <div className="space-y-3">
           {["Maroon", "Gold", "Ivory", "Navy", "Pink"].map((c) => (
-            <label key={c} className="flex items-center gap-2.5 cursor-pointer text-sm text-[#444] hover:text-poshakh-maroon transition-colors">
+            <label key={c} className="flex items-center gap-2.5 cursor-pointer text-sm text-[#444] hover:text-zohra-maroon transition-colors">
               <input
                 type="checkbox"
                 checked={selectedColors.includes(c)}
                 onChange={() => toggleColor(c)}
-                className="accent-poshakh-maroon"
+                className="accent-zohra-maroon"
               />
               {c}
             </label>
@@ -104,7 +104,7 @@ export default function ProductClient({
           step="5000"
           value={maxPrice}
           onChange={(e) => setMaxPrice(parseInt(e.target.value))}
-          className="w-full accent-poshakh-maroon"
+          className="w-full accent-zohra-maroon"
         />
         <p className="text-sm mt-2 text-[#444] font-medium">
           Under ₹{maxPrice.toLocaleString("en-IN")}
@@ -118,7 +118,7 @@ export default function ProductClient({
       {/* Page Header */}
       <header className="text-center py-12">
         <h1
-          className="font-heading text-poshakh-charcoal mb-6"
+          className="font-heading text-zohra-charcoal mb-6"
           style={{ fontSize: "clamp(36px, 5vw, 56px)", letterSpacing: "2px" }}
         >
           {meta.label}
@@ -129,7 +129,7 @@ export default function ProductClient({
               <a
                 key={sub}
                 href="#"
-                className="text-[13px] font-semibold tracking-wide text-poshakh-charcoal border-b border-poshakh-charcoal pb-1 uppercase hover:text-poshakh-gold hover:border-poshakh-gold transition-colors"
+                className="text-[13px] font-semibold tracking-wide text-zohra-charcoal border-b border-zohra-charcoal pb-1 uppercase hover:text-zohra-gold hover:border-zohra-gold transition-colors"
               >
                 {sub}
               </a>
@@ -141,7 +141,7 @@ export default function ProductClient({
       {/* Mobile filter button — hidden at 1024px+ */}
       <button
         onClick={() => setFilterOpen(true)}
-        className="lg:hidden w-full flex items-center justify-center gap-2 py-3 border border-poshakh-charcoal font-body font-semibold text-sm tracking-widest uppercase mb-6 hover:bg-poshakh-charcoal hover:text-white transition-colors"
+        className="lg:hidden w-full flex items-center justify-center gap-2 py-3 border border-zohra-charcoal font-body font-semibold text-sm tracking-widest uppercase mb-6 hover:bg-zohra-charcoal hover:text-white transition-colors"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <line x1="4" y1="6" x2="20" y2="6" />
@@ -155,26 +155,26 @@ export default function ProductClient({
       <div className="flex gap-10 items-start pb-20">
         {/* Sidebar — hidden below 1024px */}
         <aside className="hidden lg:block flex-shrink-0" style={{ width: "250px" }}>
-          <p className="text-poshakh-charcoal/60 text-sm mb-6">{filteredProducts.length} Results</p>
+          <p className="text-zohra-charcoal/60 text-sm mb-6">{filteredProducts.length} Results</p>
           {filterGroups}
         </aside>
 
         {/* Product grid */}
         <main className="flex-1 min-w-0">
-          <p className="text-poshakh-charcoal/60 text-sm mb-4 lg:hidden">
+          <p className="text-zohra-charcoal/60 text-sm mb-4 lg:hidden">
             {filteredProducts.length} Results
           </p>
 
           {filteredProducts.length === 0 ? (
-            <div className="h-64 flex flex-col items-center justify-center border border-dashed border-poshakh-gold/50 bg-poshakh-cream">
-              <p className="font-heading text-2xl text-poshakh-charcoal/50 mb-2">No matches found.</p>
+            <div className="h-64 flex flex-col items-center justify-center border border-dashed border-zohra-gold/50 bg-zohra-cream">
+              <p className="font-heading text-2xl text-zohra-charcoal/50 mb-2">No matches found.</p>
               <button
                 onClick={() => {
                   setSelectedColors([]);
                   setSelectedFabrics([]);
                   setMaxPrice(50000);
                 }}
-                className="text-poshakh-maroon font-bold text-sm tracking-widest uppercase hover:underline"
+                className="text-zohra-maroon font-bold text-sm tracking-widest uppercase hover:underline"
               >
                 Clear Filters
               </button>
@@ -202,7 +202,7 @@ export default function ProductClient({
               <button
                 onClick={() => setFilterOpen(false)}
                 aria-label="Close filters"
-                className="text-poshakh-charcoal hover:text-poshakh-maroon transition-colors"
+                className="text-zohra-charcoal hover:text-zohra-maroon transition-colors"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -212,7 +212,7 @@ export default function ProductClient({
             {filterGroups}
             <button
               onClick={() => setFilterOpen(false)}
-              className="w-full bg-poshakh-maroon text-white font-body font-semibold tracking-widest uppercase mt-6"
+              className="w-full bg-zohra-maroon text-white font-body font-semibold tracking-widest uppercase mt-6"
               style={{ padding: "16px" }}
             >
               APPLY FILTERS

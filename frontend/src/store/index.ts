@@ -50,13 +50,13 @@ interface GlobalState {
 }
 
 const persistCart = (cart: CartItem[]) => {
-  if (typeof window !== "undefined") localStorage.setItem("poshakh_cart", JSON.stringify(cart));
+  if (typeof window !== "undefined") localStorage.setItem("zohra_cart", JSON.stringify(cart));
 };
 
 const loadCart = (): CartItem[] => {
   if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem("poshakh_cart");
+    const raw = localStorage.getItem("zohra_cart");
     if (!raw) return [];
     const items = JSON.parse(raw) as CartItem[];
     // Strip lineItemId on restore — re-sync at checkout
@@ -68,10 +68,10 @@ const loadCart = (): CartItem[] => {
 
 export const useStore = create<GlobalState>((set) => ({
   cart: loadCart(),
-  cartId: typeof window !== "undefined" ? localStorage.getItem("poshakh_cart_id") : null,
+  cartId: typeof window !== "undefined" ? localStorage.getItem("zohra_cart_id") : null,
   customer: null,
   orders: typeof window !== "undefined"
-    ? (() => { try { return JSON.parse(localStorage.getItem("poshakh_orders") ?? "[]"); } catch { return []; } })()
+    ? (() => { try { return JSON.parse(localStorage.getItem("zohra_orders") ?? "[]"); } catch { return []; } })()
     : [],
   savedAddress: null,
   pendingOrder: null,
@@ -101,15 +101,15 @@ export const useStore = create<GlobalState>((set) => ({
 
   clearCart: () => {
     if (typeof window !== "undefined") {
-      localStorage.removeItem("poshakh_cart");
-      localStorage.removeItem("poshakh_cart_id");
+      localStorage.removeItem("zohra_cart");
+      localStorage.removeItem("zohra_cart_id");
     }
     set({ cart: [] });
   },
   setCartId: (id) => {
     if (typeof window !== "undefined") {
-      if (id) localStorage.setItem("poshakh_cart_id", id);
-      else localStorage.removeItem("poshakh_cart_id");
+      if (id) localStorage.setItem("zohra_cart_id", id);
+      else localStorage.removeItem("zohra_cart_id");
     }
     set({ cartId: id });
   },
@@ -120,16 +120,16 @@ export const useStore = create<GlobalState>((set) => ({
 
   setCustomer: (customer) => {
     if (typeof window !== "undefined") {
-      const lastId = localStorage.getItem("poshakh_last_customer_id");
+      const lastId = localStorage.getItem("zohra_last_customer_id");
       if (lastId && lastId !== customer.id) {
-        localStorage.removeItem("poshakh_orders");
+        localStorage.removeItem("zohra_orders");
       }
-      localStorage.setItem("poshakh_last_customer_id", customer.id);
+      localStorage.setItem("zohra_last_customer_id", customer.id);
       set({
         customer,
         orders: lastId && lastId !== customer.id
           ? []
-          : (() => { try { return JSON.parse(localStorage.getItem("poshakh_orders") ?? "[]"); } catch { return []; } })(),
+          : (() => { try { return JSON.parse(localStorage.getItem("zohra_orders") ?? "[]"); } catch { return []; } })(),
         savedAddress: null,
       });
     } else {
@@ -140,20 +140,20 @@ export const useStore = create<GlobalState>((set) => ({
   logout: async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     if (typeof window !== "undefined") {
-      localStorage.removeItem("poshakh_orders");
-      localStorage.removeItem("poshakh_last_customer_id");
+      localStorage.removeItem("zohra_orders");
+      localStorage.removeItem("zohra_last_customer_id");
     }
     set({ customer: null, orders: [], savedAddress: null, pendingOrder: null });
   },
 
   addOrder: (order) => set((state) => {
     const orders = [order, ...state.orders];
-    if (typeof window !== "undefined") localStorage.setItem("poshakh_orders", JSON.stringify(orders));
+    if (typeof window !== "undefined") localStorage.setItem("zohra_orders", JSON.stringify(orders));
     return { orders };
   }),
 
   clearOrders: () => {
-    if (typeof window !== "undefined") localStorage.removeItem("poshakh_orders");
+    if (typeof window !== "undefined") localStorage.removeItem("zohra_orders");
     set({ orders: [] });
   },
 

@@ -4,16 +4,16 @@ import Image from "next/image";
 import SocialModal from "./SocialModal";
 
 const instagramPosts = [
-  { id: 1,  img: "/images/products/saree1.png",       caption: "@kaysha.raj keeps it light, effortless, and a little bit dreamy in our Off White Embroidered Georgette Sharara.\n\n#Poshakh" },
+  { id: 1,  img: "/images/products/saree1.png",       caption: "@kaysha.raj keeps it light, effortless, and a little bit dreamy in our Off White Embroidered Georgette Sharara.\n\n#ZOHRA" },
   { id: 2,  img: "/images/products/anarkali_ai.png",  caption: "Elegance redefined. The perfect ensemble for your next celebration.\n\n#DesignerWear" },
-  { id: 3,  img: "/images/products/lehenga_ai.png",   caption: "A timeless classic designed for the modern woman.\n\n#PoshakhDesigns" },
+  { id: 3,  img: "/images/products/lehenga_ai.png",   caption: "A timeless classic designed for the modern woman.\n\n#ZOHRADesigns" },
   { id: 4,  img: "/images/products/sharara_ai.png",   caption: "Details that speak for themselves. Zari work perfected.\n\n#Craftsmanship" },
   { id: 5,  img: "/images/products/gown_ai.png",      caption: "Embrace the festive season in style with our latest collection.\n\n#FestiveStyle" },
   { id: 6,  img: "/images/products/lehenga2.png",     caption: "Hand-embroidered florals cascading on luxurious silk.\n\n#SilkSaree" },
-  { id: 7,  img: "/images/products/saree1.png",       caption: "Make a statement wherever you go.\n\n#PoshakhBride" },
+  { id: 7,  img: "/images/products/saree1.png",       caption: "Make a statement wherever you go.\n\n#ZOHRABride" },
   { id: 8,  img: "/images/products/anarkali_ai.png",  caption: "The perfect blend of tradition and modernity.\n\n#ClientDiaries" },
   { id: 9,  img: "/images/products/lehenga_ai.png",   caption: "Every thread tells a story of our heritage.\n\n#HeritageCollection" },
-  { id: 10, img: "/images/products/sharara_ai.png",   caption: "Ready for the wedding season.\n\n#Poshakh" },
+  { id: 10, img: "/images/products/sharara_ai.png",   caption: "Ready for the wedding season.\n\n#ZOHRA" },
 ];
 
 export default function SocialGrid() {
@@ -23,10 +23,10 @@ export default function SocialGrid() {
     <section style={{ backgroundColor: "#061d2d", paddingTop: "40px" }}>
       <div className="text-center" style={{ paddingBottom: "40px" }}>
         <h2
-          className="font-heading font-medium italic text-poshakh-gold"
+          className="font-heading font-medium italic text-zohra-gold"
           style={{ fontSize: "36px", letterSpacing: "2px" }}
         >
-          @Poshakh
+          @madebyzohra
         </h2>
       </div>
 

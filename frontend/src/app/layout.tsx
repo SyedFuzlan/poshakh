@@ -22,7 +22,7 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "POSHAKH — Hyderabadi Designer Wear",
+  title: "MADE BY ZOHRA — Hyderabadi Designer Wear",
   description: "Exquisite ethnic designer wear handcrafted in Hyderabad. Explore Sarees, Lehengas, and Anarkalis.",
 };
 
@@ -36,7 +36,7 @@ export default function RootLayout({
       lang="en"
       className={`${cormorant.variable} ${dmSans.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-body bg-poshakh-cream text-poshakh-charcoal selection:bg-poshakh-maroon selection:text-poshakh-gold overflow-x-hidden">
+      <body className="min-h-full flex flex-col font-body bg-zohra-cream text-zohra-charcoal selection:bg-zohra-maroon selection:text-zohra-gold overflow-x-hidden">
         <SessionProvider>
           <AnnouncementBar />
           <Navbar />

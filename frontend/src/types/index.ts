@@ -7,7 +7,7 @@ export interface Product {
   category: string;
   description?: string;
   stock?: number;
-  variants?: { id: string; size: string; stock: number }[];
+  variants?: { id: string; size: string; color?: string; stock: number }[];
 }
 
 export interface CartItem {

@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     const customer = data.customer as { id: string; email: string | null; phone: string | null; firstName: string; lastName: string };
     const response = NextResponse.json({ success: true, customer });
-    response.cookies.set("poshakh_token", createSignedCookie(customer), COOKIE_OPTS);
+    response.cookies.set("zohra_token", createSignedCookie(customer), COOKIE_OPTS);
     return response;
   } catch (e) {
     return NextResponse.json({ success: false, error: String(e) }, { status: 500 });

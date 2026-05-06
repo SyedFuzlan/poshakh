@@ -17,6 +17,22 @@ export default function FeaturedProducts() {
 
   return (
     <section style={{ background: "#FAF8F5", padding: "80px 40px" }}>
+      <style>{`
+        .fp-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+          gap: 28px;
+          max-width: 1280px;
+          margin: 0 auto 48px;
+        }
+        @media (max-width: 768px) {
+          .fp-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            padding: 0 5px;
+          }
+        }
+      `}</style>
       {/* Heading */}
       <div style={{ textAlign: "center", marginBottom: "48px" }}>
         <p style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "4px", color: "#C8A367", textTransform: "uppercase", marginBottom: "12px" }}>
@@ -35,13 +51,7 @@ export default function FeaturedProducts() {
       </div>
 
       {/* Product Grid */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-        gap: "28px",
-        maxWidth: "1280px",
-        margin: "0 auto 48px",
-      }}>
+      <div className="fp-grid">
         {products.map((product) => (
           <Link
             key={product.id}

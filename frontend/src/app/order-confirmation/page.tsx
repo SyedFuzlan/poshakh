@@ -36,8 +36,8 @@ function OrderConfirmationContent() {
 
       <p style={{ fontSize: "15px", color: "#555", lineHeight: 1.7, marginBottom: "8px", textAlign: "center" }}>
         {isCOD
-          ? "Thank you for shopping with Poshakh! Your Cash on Delivery order has been placed successfully."
-          : "Thank you for shopping with Poshakh. Your payment was successful and your order is being processed."}
+          ? "Thank you for shopping with ZOHRA! Your Cash on Delivery order has been placed successfully."
+          : "Thank you for shopping with ZOHRA. Your payment was successful and your order is being processed."}
       </p>
 
       {paymentId && (

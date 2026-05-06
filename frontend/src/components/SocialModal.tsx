@@ -28,7 +28,7 @@ export default function SocialModal({ isOpen, post, onClose }: SocialModalProps)
         {/* Close Button */}
         <button 
           onClick={onClose} 
-          className="absolute top-4 right-4 md:text-poshakh-charcoal text-white z-20 hover:text-poshakh-maroon transition-colors"
+          className="absolute top-4 right-4 md:text-zohra-charcoal text-white z-20 hover:text-zohra-maroon transition-colors"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -41,17 +41,17 @@ export default function SocialModal({ isOpen, post, onClose }: SocialModalProps)
         </div>
 
         {/* Caption Side */}
-        <div className="w-full md:w-2/5 flex flex-col p-8 bg-poshakh-cream">
-          <div className="flex items-center gap-3 border-b border-poshakh-gold/20 pb-4 mb-6">
-            <div className="w-10 h-10 rounded-full bg-poshakh-maroon text-poshakh-gold flex justify-center items-center font-bold font-heading">
+        <div className="w-full md:w-2/5 flex flex-col p-8 bg-zohra-cream">
+          <div className="flex items-center gap-3 border-b border-zohra-gold/20 pb-4 mb-6">
+            <div className="w-10 h-10 rounded-full bg-zohra-maroon text-zohra-gold flex justify-center items-center font-bold font-heading">
               P
             </div>
-            <span className="font-bold text-poshakh-charcoal tracking-wide">@poshakh_official</span>
+            <span className="font-bold text-zohra-charcoal tracking-wide">@zohra_official</span>
           </div>
-          <p className="text-poshakh-charcoal/80 flex-grow font-medium leading-relaxed">
+          <p className="text-zohra-charcoal/80 flex-grow font-medium leading-relaxed">
             {post.caption}
           </p>
-          <a href="#" className="mt-8 block text-center bg-transparent border border-poshakh-maroon text-poshakh-maroon hover:bg-poshakh-maroon hover:text-poshakh-gold transition-colors py-3 uppercase tracking-widest font-heading font-semibold">
+          <a href="#" className="mt-8 block text-center bg-transparent border border-zohra-maroon text-zohra-maroon hover:bg-zohra-maroon hover:text-zohra-gold transition-colors py-3 uppercase tracking-widest font-heading font-semibold">
             View on Instagram
           </a>
         </div>

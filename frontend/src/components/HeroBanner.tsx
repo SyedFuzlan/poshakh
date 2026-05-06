@@ -44,7 +44,7 @@ export default function HeroBanner() {
         >
           <Image
             src={slide.image}
-            alt="Poshakh Collection"
+            alt="ZOHRA Collection"
             fill
             className="object-cover object-top"
             priority={i === 0}

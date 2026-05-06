@@ -8,7 +8,7 @@ export default function AnnouncementBar() {
 
   return (
     <div
-      className="bg-poshakh-maroon text-poshakh-varwhite overflow-hidden whitespace-nowrap relative z-[1000] flex items-center"
+      className="bg-zohra-maroon text-zohra-varwhite overflow-hidden whitespace-nowrap relative z-[1000] flex items-center"
       style={{ height: "26px" }}
     >
       <div

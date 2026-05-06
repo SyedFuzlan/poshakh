@@ -44,6 +44,16 @@ function formatProduct(row, variants = []) {
   // Support both price_paise (new) and price (legacy) columns
   const paise = row.price_paise || Math.round((row.price || 0) * 100);
   const priceRupees = Math.round(paise / 100);
+
+  // If variants provided, totalStock is their sum
+  // If row has total_stock (from joined query), use that
+  let totalStock = 0;
+  if (variants && variants.length > 0) {
+    totalStock = variants.reduce((sum, v) => sum + (v.stock || 0), 0);
+  } else if (row.total_stock !== undefined) {
+    totalStock = row.total_stock;
+  }
+
   return {
     id: String(row.id),
     name: row.name,
@@ -55,6 +65,7 @@ function formatProduct(row, variants = []) {
     images: row.image_url ? [row.image_url] : [],
     image_url: row.image_url || "",
     description: row.description || "",
+    totalStock,
     variants,
     created_at: row.created_at,
   };
@@ -64,30 +75,55 @@ function formatProduct(row, variants = []) {
 router.get("/", (req, res) => {
   try {
     const { category, collection } = req.query;
-    let stmt;
-    let rows;
-
-    if (category && collection) {
-      stmt = db.prepare(
-        "SELECT * FROM products WHERE category = ? AND collection = ? ORDER BY id DESC"
-      );
-      rows = stmt.all(category, collection);
-    } else if (category) {
-      stmt = db.prepare(
-        "SELECT * FROM products WHERE category = ? ORDER BY id DESC"
-      );
-      rows = stmt.all(category);
-    } else if (collection) {
-      stmt = db.prepare(
-        "SELECT * FROM products WHERE collection = ? ORDER BY id DESC"
-      );
-      rows = stmt.all(collection);
-    } else {
-      stmt = db.prepare("SELECT * FROM products ORDER BY id DESC");
-      rows = stmt.all();
+    
+    // Check if it's an owner request (to show out-of-stock items)
+    let isOwner = false;
+    const auth = req.headers.authorization;
+    if (auth && auth.startsWith("Bearer ")) {
+      try {
+        const jwt = require("jsonwebtoken");
+        const token = auth.split(" ")[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (decoded.role === "owner") {
+          isOwner = true;
+        }
+      } catch (err) {
+        // Not a valid token or not an owner, treat as public
+      }
     }
 
-    res.json({ products: rows.map(formatProduct) });
+    let sql = `
+      SELECT p.*, COALESCE(SUM(pv.stock), 0) as total_stock
+      FROM products p
+      LEFT JOIN product_variants pv ON p.id = pv.product_id
+    `;
+    let params = [];
+
+    let where = [];
+    if (category) {
+      where.push("p.category = ?");
+      params.push(category);
+    }
+    if (collection) {
+      where.push("p.collection = ?");
+      params.push(collection);
+    }
+    
+    if (where.length > 0) {
+      sql += " WHERE " + where.join(" AND ");
+    }
+
+    sql += " GROUP BY p.id";
+
+    // Hide out-of-stock for public
+    if (!isOwner) {
+      sql += " HAVING total_stock > 0";
+    }
+
+    sql += " ORDER BY p.id DESC";
+
+    const rows = db.prepare(sql).all(...params);
+    res.json({ products: rows.map(row => formatProduct(row)) });
   } catch (err) {
     console.error("GET /api/products error:", err);
     res.status(500).json({ error: "Failed to fetch products" });
@@ -101,6 +137,7 @@ router.get("/:id", (req, res) => {
       SELECT p.*,
              pv.id    AS variant_id,
              pv.size  AS variant_size,
+             pv.color AS variant_color,
              pv.stock AS variant_stock
       FROM   products p
       LEFT JOIN product_variants pv ON pv.product_id = p.id
@@ -112,7 +149,12 @@ router.get("/:id", (req, res) => {
 
     const variants = rows
       .filter(r => r.variant_id != null)
-      .map(r => ({ id: String(r.variant_id), size: r.variant_size, stock: r.variant_stock }));
+      .map(r => ({
+        id: String(r.variant_id),
+        size: r.variant_size,
+        color: r.variant_color,
+        stock: r.variant_stock
+      }));
 
     res.json({ product: formatProduct(rows[0], variants) });
   } catch (err) {
@@ -159,9 +201,15 @@ router.post(
       const { randomUUID } = require("crypto");
       const productId = randomUUID();
 
+      // Calculate total stock from variants for the top-level products.stock column
+      const totalStock = stockArr.reduce((sum, s) => {
+        const val = parseInt(s ?? "0", 10);
+        return sum + (isNaN(val) ? 0 : Math.max(0, val));
+      }, 0);
+
       db.prepare(
-          `INSERT INTO products (id, name, price, price_paise, category, collection, image_url, description)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+          `INSERT INTO products (id, name, price, price_paise, category, collection, image_url, description, stock)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
         ).run(
           productId,
           name.trim(),
@@ -170,7 +218,8 @@ router.post(
           category.trim().toLowerCase(),
           (collection || "").trim(),
           imageUrl,
-          (description || "").trim() || null
+          (description || "").trim() || null,
+          totalStock
         );
       const VALID_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Free Size'];
       sizes.forEach((size, i) => {
@@ -185,6 +234,7 @@ router.post(
         SELECT p.*,
                pv.id    AS variant_id,
                pv.size  AS variant_size,
+               pv.color AS variant_color,
                pv.stock AS variant_stock
         FROM   products p
         LEFT JOIN product_variants pv ON pv.product_id = p.id
@@ -194,7 +244,12 @@ router.post(
 
       const newVariants = newRows
         .filter(r => r.variant_id != null)
-        .map(r => ({ id: String(r.variant_id), size: r.variant_size, stock: r.variant_stock }));
+        .map(r => ({
+          id: String(r.variant_id),
+          size: r.variant_size,
+          color: r.variant_color,
+          stock: r.variant_stock
+        }));
 
       res.status(201).json({ product: formatProduct(newRows[0], newVariants) });
     } catch (err) {
@@ -275,18 +330,25 @@ router.patch("/:id", requireOwner, (req, res) => {
       return res.status(400).json({ error: "At least one size is required" });
     }
 
-    // 4. Update products row (price stored in paise)
+    // 4. Calculate total stock for products.stock column (redundant but requested)
+    const totalStock = stockFiltered.reduce((sum, s) => {
+      const val = parseInt(s ?? "0", 10);
+      return sum + (isNaN(val) ? 0 : Math.max(0, val));
+    }, 0);
+
+    // 5. Update products row (price stored in paise)
     db.prepare(
-      "UPDATE products SET name = ?, price = ?, price_paise = ?, description = ? WHERE id = ?"
+      "UPDATE products SET name = ?, price = ?, price_paise = ?, description = ?, stock = ? WHERE id = ?"
     ).run(
       name.trim(),
       priceNum,
       Math.round(priceNum * 100),
       (description || "").trim() || null,
+      totalStock,
       req.params.id
     );
 
-    // 5. Delete all existing variants, then re-insert submitted set (D-06)
+    // 6. Delete all existing variants, then re-insert submitted set (D-06)
     db.prepare("DELETE FROM product_variants WHERE product_id = ?").run(
       req.params.id
     );
@@ -303,6 +365,7 @@ router.patch("/:id", requireOwner, (req, res) => {
         `SELECT p.*,
                 pv.id    AS variant_id,
                 pv.size  AS variant_size,
+                pv.color AS variant_color,
                 pv.stock AS variant_stock
          FROM   products p
          LEFT JOIN product_variants pv ON pv.product_id = p.id
@@ -315,6 +378,7 @@ router.patch("/:id", requireOwner, (req, res) => {
       .map((r) => ({
         id: String(r.variant_id),
         size: r.variant_size,
+        color: r.variant_color,
         stock: r.variant_stock,
       }));
     res.json({ product: formatProduct(rows[0], variants) });

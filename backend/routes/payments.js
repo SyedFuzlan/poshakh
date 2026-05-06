@@ -89,42 +89,61 @@ function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOrderId,
   safeMigrate('ALTER TABLE orders ADD COLUMN total_paise INTEGER');
   safeMigrate('ALTER TABLE orders ADD COLUMN shipped_at TEXT');
 
-  db.prepare(`
-    INSERT INTO orders (
-      id, razorpay_payment_id, razorpay_order_id, utr, payment_method,
-      customer_name, customer_phone, customer_email,
-      address_line1, address_line2, city, state, pin_code,
-      items_json, subtotal_paise, shipping_method, shipping_cost_paise,
-      total_paise, total_amount, status
-    ) VALUES (
-      ?, ?, ?, ?, ?,
-      ?, ?, ?,
-      ?, ?, ?, ?, ?,
-      ?, ?, ?, ?,
-      ?, ?, ?
-    )
-  `).run(
-    orderId,
-    razorpayPaymentId || null,
-    razorpayOrderId || null,
-    utr || null,
-    paymentMethod,
-    customer_name.trim(),
-    customer_phone.trim(),
-    customer_email?.trim() || null,
-    address.line1.trim(),
-    (address.line2 || "").trim(),
-    address.city.trim(),
-    address.state.trim(),
-    address.pin_code.trim(),
-    JSON.stringify(items),
-    Math.round(subtotal * 100),
-    shipping_method,
-    Math.round(shipping_cost * 100),
-    Math.round(total * 100),
-    total,           // total_amount — original NOT NULL column
-    status
-  );
+  try {
+    db.prepare(`
+      INSERT INTO orders (
+        id, razorpay_payment_id, razorpay_order_id, utr, payment_method,
+        customer_name, customer_phone, customer_email,
+        address_line1, address_line2, city, state, pin_code,
+        items_json, subtotal_paise, shipping_method, shipping_cost_paise,
+        total_paise, total_amount, status
+      ) VALUES (
+        ?, ?, ?, ?, ?,
+        ?, ?, ?,
+        ?, ?, ?, ?, ?,
+        ?, ?, ?, ?,
+        ?, ?, ?
+      )
+    `).run(
+      orderId,
+      razorpayPaymentId || null,
+      razorpayOrderId || null,
+      utr || null,
+      paymentMethod,
+      customer_name.trim(),
+      customer_phone.trim(),
+      customer_email?.trim() || null,
+      address.line1.trim(),
+      (address.line2 || "").trim(),
+      address.city.trim(),
+      address.state.trim(),
+      address.pin_code.trim(),
+      JSON.stringify(items),
+      Math.round(subtotal * 100),
+      shipping_method,
+      Math.round(shipping_cost * 100),
+      Math.round(total * 100),
+      total,           // total_amount — original NOT NULL column
+      status
+    );
+
+    // Decrement stock for each item in the order
+    if (Array.isArray(items)) {
+      for (const item of items) {
+        // item.id is product_id, item.size is the variant size
+        if (item.id && item.size) {
+          db.prepare(`
+            UPDATE product_variants 
+            SET stock = MAX(0, stock - ?) 
+            WHERE product_id = ? AND size = ?
+          `).run(parseInt(item.quantity || 1, 10), item.id, item.size);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("saveOrder error:", err);
+    throw err;
+  }
 }
 
 // ── POST /api/payments/create-order ────────────

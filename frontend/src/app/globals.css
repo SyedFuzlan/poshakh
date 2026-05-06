@@ -4,13 +4,13 @@
   --font-heading: var(--font-cormorant);
   --font-body: var(--font-dm-sans);
 
-  --color-poshakh-cream: #F5EFE6;
-  --color-poshakh-maroon: #3D0D16;
-  --color-poshakh-maroon-dark: #3E0F13;
-  --color-poshakh-gold: #C8A367;
-  --color-poshakh-varwhite: #F6EFE3;
-  --color-poshakh-charcoal: #1A1A1A;
-  --color-poshakh-whatsapp: #25D366;
+  --color-zohra-cream: #F5EFE6;
+  --color-zohra-maroon: #3D0D16;
+  --color-zohra-maroon-dark: #3E0F13;
+  --color-zohra-gold: #C8A367;
+  --color-zohra-varwhite: #F6EFE3;
+  --color-zohra-charcoal: #1A1A1A;
+  --color-zohra-whatsapp: #25D366;
 }
 
 /* Base custom resets */

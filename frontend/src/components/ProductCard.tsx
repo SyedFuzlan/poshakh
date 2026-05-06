@@ -22,7 +22,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         />
         {/* Wishlist button — animates up from bottom-right on hover */}
         <button
-          className="absolute bottom-[15px] right-[15px] bg-white w-9 h-9 rounded-full flex items-center justify-center text-poshakh-charcoal hover:text-poshakh-maroon shadow-md opacity-0 translate-y-2.5 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 z-10"
+          className="absolute bottom-[15px] right-[15px] bg-white w-9 h-9 rounded-full flex items-center justify-center text-zohra-charcoal hover:text-zohra-maroon shadow-md opacity-0 translate-y-2.5 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 z-10"
           aria-label="Add to wishlist"
           onClick={(e) => e.preventDefault()}
         >
@@ -33,11 +33,29 @@ export default function ProductCard({ product }: ProductCardProps) {
       </Link>
       <div className="pt-4 pb-2">
         <Link href={`/products/${product.id}`}>
-          <h3 className="font-body text-[14px] text-poshakh-charcoal hover:text-poshakh-maroon transition-colors line-clamp-1">
+          <h3 className="font-body text-[14px] text-zohra-charcoal hover:text-zohra-maroon transition-colors line-clamp-1">
             {product.name}
           </h3>
         </Link>
-        <p className="text-poshakh-gold font-semibold text-[14px] mt-1">{product.formattedPrice}</p>
+        <p className="text-zohra-gold font-semibold text-[14px] mt-1">{product.formattedPrice}</p>
+        
+        {/* Color dots if variants have colors */}
+        {(() => {
+          const colors = Array.from(new Set(product.variants?.map(v => v.color).filter(Boolean)));
+          if (colors.length <= 1) return null;
+          return (
+            <div className="flex gap-1.5 mt-2">
+              {colors.slice(0, 5).map((color, i) => (
+                <div
+                  key={i}
+                  className="w-2.5 h-2.5 rounded-full border border-black/10"
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+              {colors.length > 5 && <span className="text-[9px] text-zohra-charcoal/50">+{colors.length - 5}</span>}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

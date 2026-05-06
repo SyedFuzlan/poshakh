@@ -160,7 +160,7 @@ export default function CheckoutPage() {
         key: data.key_id,
         amount: data.amount,
         currency: data.currency,
-        name: "Poshakh",
+        name: "ZOHRA",
         description: `${cart.length} item${cart.length > 1 ? "s" : ""}`,
         order_id: data.razorpay_order_id,
         prefill: {
@@ -233,7 +233,7 @@ export default function CheckoutPage() {
     finally { setPaying(false); }
   };
 
-  const upiLink = `upi://pay?pa=${encodeURIComponent(UPI_ID)}&pn=${encodeURIComponent("Poshakh")}&am=${total.toFixed(2)}&cu=INR&tn=${encodeURIComponent("Poshakh Order")}`;
+  const upiLink = `upi://pay?pa=${encodeURIComponent(UPI_ID)}&pn=${encodeURIComponent("ZOHRA")}&am=${total.toFixed(2)}&cu=INR&tn=${encodeURIComponent("ZOHRA Order")}`;
 
   const breadcrumb = ["Cart", "Information", "Shipping", "Payment"];
   const stepIndex = step === 1 ? 1 : step === 2 ? 2 : 3;
@@ -242,8 +242,9 @@ export default function CheckoutPage() {
     <div style={{ minHeight: "100vh", background: "#fff" }}>
       {/* Header */}
       <header style={{ borderBottom: "1px solid #e5e7eb", padding: "20px 40px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <Link href="/" style={{ fontFamily: "var(--font-heading)", fontSize: "22px", letterSpacing: "4px", color: "#2A2520", textDecoration: "none" }}>
-          POSHAKH
+        <Link href="/" style={{ display: "flex", flexDirection: "column", alignItems: "center", textDecoration: "none" }}>
+          <span style={{ fontSize: "8px", letterSpacing: "2px", color: "#555", marginBottom: "-2px" }}>MADE BY</span>
+          <span style={{ fontFamily: "var(--font-heading)", fontSize: "24px", letterSpacing: "3px", color: "#2A2520", fontWeight: 500 }}>ZOHRA</span>
         </Link>
       </header>
 
@@ -436,7 +437,7 @@ export default function CheckoutPage() {
                 </button>
                 */}
 
-                {/* UPI */}
+                {/* UPI — temporarily disabled
                 <button
                   onClick={upiStep !== "idle" ? () => setUpiStep("idle") : handleUPI}
                   disabled={paying}
@@ -444,6 +445,7 @@ export default function CheckoutPage() {
                 >
                   {upiStep !== "idle" ? "CANCEL UPI PAYMENT" : `PAY ₹${total.toLocaleString("en-IN")} WITH UPI / PHONEPE / GPAY`}
                 </button>
+                */
 
                 {/* COD */}
                 <button
