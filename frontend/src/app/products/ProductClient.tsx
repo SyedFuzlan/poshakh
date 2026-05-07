@@ -123,19 +123,21 @@ export default function ProductClient({
         >
           {meta.label}
         </h1>
-        {meta.subs.length > 0 && (
-          <nav className="flex flex-wrap justify-center gap-6 md:gap-8">
+      {meta.subs.length > 0 && (
+        <div className="w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] overflow-x-auto no-scrollbar lg:w-full lg:static lg:ml-0 lg:mr-0 mb-8">
+          <nav className="flex flex-nowrap lg:flex-wrap justify-start lg:justify-center gap-3 md:gap-8 px-[5%] lg:px-0 min-w-max lg:min-w-0">
             {meta.subs.map((sub) => (
               <a
                 key={sub}
                 href="#"
-                className="text-[13px] font-semibold tracking-wide text-zohra-charcoal border-b border-zohra-charcoal pb-1 uppercase hover:text-zohra-gold hover:border-zohra-gold transition-colors"
+                className="whitespace-nowrap text-[11px] lg:text-[13px] font-semibold tracking-widest text-zohra-charcoal border border-zohra-charcoal/20 lg:border-0 lg:border-b lg:border-zohra-charcoal py-2.5 px-5 lg:p-0 lg:pb-1 uppercase hover:text-zohra-maroon hover:border-zohra-maroon transition-all rounded-full lg:rounded-none bg-white lg:bg-transparent shadow-sm lg:shadow-none"
               >
                 {sub}
               </a>
             ))}
           </nav>
-        )}
+        </div>
+      )}
       </header>
 
       {/* Mobile filter button — hidden at 1024px+ */}

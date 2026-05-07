@@ -201,41 +201,103 @@
         <!-- Phase 01: sizes & stock -->
         <div class="full">
           <label class="pf-label">Sizes &amp; Stock <span style="color:var(--error)">*</span></label>
-          <div id="sizes-container" style="display:flex;flex-wrap:wrap;gap:12px;margin-top:8px">
-            <div class="size-row" style="display:flex;align-items:center;gap:8px;background:#f7f4f0;border:1px solid var(--border-subtle);border-radius:4px;padding:8px 12px">
-              <input type="checkbox" id="size-XS" name="sizes[]" value="XS" onchange="toggleStock(this)" style="width:16px;height:16px;accent-color:var(--maroon);cursor:pointer"/>
-              <label for="size-XS" style="font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;min-width:36px">XS</label>
-              <input type="number" id="stock-XS" name="stock[]" min="0" value="0" placeholder="qty" style="display:none;width:72px;height:32px;border:1px solid #ddd;border-radius:4px;padding:0 8px;font-size:12px;text-align:center"/>
+          <div id="sizes-container" style="display:flex;flex-direction:column;gap:12px;margin-top:8px">
+            <script>
+              function toggleNewStock(cb) {
+                const row = cb.closest('.size-row');
+                const ctrl = document.getElementById('new-stock-ctrl-' + cb.value);
+                if (cb.checked) {
+                  ctrl.style.display = 'flex';
+                  row.style.borderColor = 'var(--maroon)';
+                  row.style.background = 'var(--cream-warm)';
+                } else {
+                  ctrl.style.display = 'none';
+                  row.style.borderColor = 'var(--border-subtle)';
+                  row.style.background = '#f7f4f0';
+                }
+              }
+              function adjustNewStock(size, delta) {
+                const input = document.getElementById('stock-' + size);
+                let val = parseInt(input.value || '0', 10);
+                input.value = Math.max(0, val + delta);
+              }
+            </script>
+            <div class="size-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:#f7f4f0;border:1px solid var(--border-subtle);border-radius:4px;padding:8px 12px">
+              <div style="display:flex;align-items:center;gap:8px;flex:1">
+                <input type="checkbox" id="size-XS" name="sizes[]" value="XS" onchange="toggleNewStock(this)" style="width:16px;height:16px;accent-color:var(--maroon);cursor:pointer"/>
+                <label for="size-XS" style="font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;min-width:36px">XS</label>
+              </div>
+              <div id="new-stock-ctrl-XS" style="display:none;align-items:center;gap:4px">
+                <button onclick="adjustNewStock('XS', -1)" style="width:28px;height:28px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer">-</button>
+                <input type="number" id="stock-XS" name="stock[]" min="0" value="0" style="width:50px;height:28px;border:1px solid #ddd;border-radius:4px;text-align:center;font-size:12px"/>
+                <button onclick="adjustNewStock('XS', 1)" style="width:28px;height:28px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer">+</button>
+              </div>
             </div>
-            <div class="size-row" style="display:flex;align-items:center;gap:8px;background:#f7f4f0;border:1px solid var(--border-subtle);border-radius:4px;padding:8px 12px">
-              <input type="checkbox" id="size-S" name="sizes[]" value="S" onchange="toggleStock(this)" style="width:16px;height:16px;accent-color:var(--maroon);cursor:pointer"/>
-              <label for="size-S" style="font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;min-width:36px">S</label>
-              <input type="number" id="stock-S" name="stock[]" min="0" value="0" placeholder="qty" style="display:none;width:72px;height:32px;border:1px solid #ddd;border-radius:4px;padding:0 8px;font-size:12px;text-align:center"/>
+            <div class="size-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:#f7f4f0;border:1px solid var(--border-subtle);border-radius:4px;padding:8px 12px">
+              <div style="display:flex;align-items:center;gap:8px;flex:1">
+                <input type="checkbox" id="size-S" name="sizes[]" value="S" onchange="toggleNewStock(this)" style="width:16px;height:16px;accent-color:var(--maroon);cursor:pointer"/>
+                <label for="size-S" style="font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;min-width:36px">S</label>
+              </div>
+              <div id="new-stock-ctrl-S" style="display:none;align-items:center;gap:4px">
+                <button onclick="adjustNewStock('S', -1)" style="width:28px;height:28px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer">-</button>
+                <input type="number" id="stock-S" name="stock[]" min="0" value="0" style="width:50px;height:28px;border:1px solid #ddd;border-radius:4px;text-align:center;font-size:12px"/>
+                <button onclick="adjustNewStock('S', 1)" style="width:28px;height:28px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer">+</button>
+              </div>
             </div>
-            <div class="size-row" style="display:flex;align-items:center;gap:8px;background:#f7f4f0;border:1px solid var(--border-subtle);border-radius:4px;padding:8px 12px">
-              <input type="checkbox" id="size-M" name="sizes[]" value="M" onchange="toggleStock(this)" style="width:16px;height:16px;accent-color:var(--maroon);cursor:pointer"/>
-              <label for="size-M" style="font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;min-width:36px">M</label>
-              <input type="number" id="stock-M" name="stock[]" min="0" value="0" placeholder="qty" style="display:none;width:72px;height:32px;border:1px solid #ddd;border-radius:4px;padding:0 8px;font-size:12px;text-align:center"/>
+            <div class="size-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:#f7f4f0;border:1px solid var(--border-subtle);border-radius:4px;padding:8px 12px">
+              <div style="display:flex;align-items:center;gap:8px;flex:1">
+                <input type="checkbox" id="size-M" name="sizes[]" value="M" onchange="toggleNewStock(this)" style="width:16px;height:16px;accent-color:var(--maroon);cursor:pointer"/>
+                <label for="size-M" style="font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;min-width:36px">M</label>
+              </div>
+              <div id="new-stock-ctrl-M" style="display:none;align-items:center;gap:4px">
+                <button onclick="adjustNewStock('M', -1)" style="width:28px;height:28px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer">-</button>
+                <input type="number" id="stock-M" name="stock[]" min="0" value="0" style="width:50px;height:28px;border:1px solid #ddd;border-radius:4px;text-align:center;font-size:12px"/>
+                <button onclick="adjustNewStock('M', 1)" style="width:28px;height:28px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer">+</button>
+              </div>
             </div>
-            <div class="size-row" style="display:flex;align-items:center;gap:8px;background:#f7f4f0;border:1px solid var(--border-subtle);border-radius:4px;padding:8px 12px">
-              <input type="checkbox" id="size-L" name="sizes[]" value="L" onchange="toggleStock(this)" style="width:16px;height:16px;accent-color:var(--maroon);cursor:pointer"/>
-              <label for="size-L" style="font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;min-width:36px">L</label>
-              <input type="number" id="stock-L" name="stock[]" min="0" value="0" placeholder="qty" style="display:none;width:72px;height:32px;border:1px solid #ddd;border-radius:4px;padding:0 8px;font-size:12px;text-align:center"/>
+            <div class="size-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:#f7f4f0;border:1px solid var(--border-subtle);border-radius:4px;padding:8px 12px">
+              <div style="display:flex;align-items:center;gap:8px;flex:1">
+                <input type="checkbox" id="size-L" name="sizes[]" value="L" onchange="toggleNewStock(this)" style="width:16px;height:16px;accent-color:var(--maroon);cursor:pointer"/>
+                <label for="size-L" style="font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;min-width:36px">L</label>
+              </div>
+              <div id="new-stock-ctrl-L" style="display:none;align-items:center;gap:4px">
+                <button onclick="adjustNewStock('L', -1)" style="width:28px;height:28px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer">-</button>
+                <input type="number" id="stock-L" name="stock[]" min="0" value="0" style="width:50px;height:28px;border:1px solid #ddd;border-radius:4px;text-align:center;font-size:12px"/>
+                <button onclick="adjustNewStock('L', 1)" style="width:28px;height:28px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer">+</button>
+              </div>
             </div>
-            <div class="size-row" style="display:flex;align-items:center;gap:8px;background:#f7f4f0;border:1px solid var(--border-subtle);border-radius:4px;padding:8px 12px">
-              <input type="checkbox" id="size-XL" name="sizes[]" value="XL" onchange="toggleStock(this)" style="width:16px;height:16px;accent-color:var(--maroon);cursor:pointer"/>
-              <label for="size-XL" style="font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;min-width:36px">XL</label>
-              <input type="number" id="stock-XL" name="stock[]" min="0" value="0" placeholder="qty" style="display:none;width:72px;height:32px;border:1px solid #ddd;border-radius:4px;padding:0 8px;font-size:12px;text-align:center"/>
+            <div class="size-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:#f7f4f0;border:1px solid var(--border-subtle);border-radius:4px;padding:8px 12px">
+              <div style="display:flex;align-items:center;gap:8px;flex:1">
+                <input type="checkbox" id="size-XL" name="sizes[]" value="XL" onchange="toggleNewStock(this)" style="width:16px;height:16px;accent-color:var(--maroon);cursor:pointer"/>
+                <label for="size-XL" style="font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;min-width:36px">XL</label>
+              </div>
+              <div id="new-stock-ctrl-XL" style="display:none;align-items:center;gap:4px">
+                <button onclick="adjustNewStock('XL', -1)" style="width:28px;height:28px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer">-</button>
+                <input type="number" id="stock-XL" name="stock[]" min="0" value="0" style="width:50px;height:28px;border:1px solid #ddd;border-radius:4px;text-align:center;font-size:12px"/>
+                <button onclick="adjustNewStock('XL', 1)" style="width:28px;height:28px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer">+</button>
+              </div>
             </div>
-            <div class="size-row" style="display:flex;align-items:center;gap:8px;background:#f7f4f0;border:1px solid var(--border-subtle);border-radius:4px;padding:8px 12px">
-              <input type="checkbox" id="size-XXL" name="sizes[]" value="XXL" onchange="toggleStock(this)" style="width:16px;height:16px;accent-color:var(--maroon);cursor:pointer"/>
-              <label for="size-XXL" style="font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;min-width:36px">XXL</label>
-              <input type="number" id="stock-XXL" name="stock[]" min="0" value="0" placeholder="qty" style="display:none;width:72px;height:32px;border:1px solid #ddd;border-radius:4px;padding:0 8px;font-size:12px;text-align:center"/>
+            <div class="size-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:#f7f4f0;border:1px solid var(--border-subtle);border-radius:4px;padding:8px 12px">
+              <div style="display:flex;align-items:center;gap:8px;flex:1">
+                <input type="checkbox" id="size-XXL" name="sizes[]" value="XXL" onchange="toggleNewStock(this)" style="width:16px;height:16px;accent-color:var(--maroon);cursor:pointer"/>
+                <label for="size-XXL" style="font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;min-width:36px">XXL</label>
+              </div>
+              <div id="new-stock-ctrl-XXL" style="display:none;align-items:center;gap:4px">
+                <button onclick="adjustNewStock('XXL', -1)" style="width:28px;height:28px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer">-</button>
+                <input type="number" id="stock-XXL" name="stock[]" min="0" value="0" style="width:50px;height:28px;border:1px solid #ddd;border-radius:4px;text-align:center;font-size:12px"/>
+                <button onclick="adjustNewStock('XXL', 1)" style="width:28px;height:28px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer">+</button>
+              </div>
             </div>
-            <div class="size-row" style="display:flex;align-items:center;gap:8px;background:#f7f4f0;border:1px solid var(--border-subtle);border-radius:4px;padding:8px 12px">
-              <input type="checkbox" id="size-Free Size" name="sizes[]" value="Free Size" onchange="toggleStock(this)" style="width:16px;height:16px;accent-color:var(--maroon);cursor:pointer"/>
-              <label for="size-Free Size" style="font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;min-width:36px">Free Size</label>
-              <input type="number" id="stock-Free Size" name="stock[]" min="0" value="0" placeholder="qty" style="display:none;width:72px;height:32px;border:1px solid #ddd;border-radius:4px;padding:0 8px;font-size:12px;text-align:center"/>
+            <div class="size-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:#f7f4f0;border:1px solid var(--border-subtle);border-radius:4px;padding:8px 12px">
+              <div style="display:flex;align-items:center;gap:8px;flex:1">
+                <input type="checkbox" id="size-Free Size" name="sizes[]" value="Free Size" onchange="toggleNewStock(this)" style="width:16px;height:16px;accent-color:var(--maroon);cursor:pointer"/>
+                <label for="size-Free Size" style="font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;min-width:36px">Free Size</label>
+              </div>
+              <div id="new-stock-ctrl-Free Size" style="display:none;align-items:center;gap:4px">
+                <button onclick="adjustNewStock('Free Size', -1)" style="width:28px;height:28px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer">-</button>
+                <input type="number" id="stock-Free Size" name="stock[]" min="0" value="0" style="width:50px;height:28px;border:1px solid #ddd;border-radius:4px;text-align:center;font-size:12px"/>
+                <button onclick="adjustNewStock('Free Size', 1)" style="width:28px;height:28px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer">+</button>
+              </div>
             </div>
           </div>
           <p id="sizes-error" style="color:var(--error);font-size:12px;margin-top:8px;display:none">Select at least one size.</p>
@@ -546,17 +608,26 @@ let _escKeyHandler = null;
 
 function emToggleStock(cb) {
   const row = cb.closest('.size-row');
-  const stockInput = document.getElementById('em-stock-' + cb.value);
+  const stockCtrl = document.getElementById('em-stock-ctrl-' + cb.value);
   if (cb.checked) {
-    stockInput.style.display = 'inline-block';
+    stockCtrl.style.display = 'flex';
     row.style.borderColor = 'var(--maroon)';
     row.style.background = 'var(--cream-warm)';
   } else {
-    stockInput.style.display = 'none';
-    stockInput.value = '0';
+    stockCtrl.style.display = 'none';
+    const input = document.getElementById('em-stock-' + cb.value);
+    if (input) input.value = '0';
     row.style.borderColor = 'var(--border-subtle)';
     row.style.background = '#f7f4f0';
   }
+}
+
+function adjustStock(size, delta) {
+  const input = document.getElementById('em-stock-' + size);
+  if (!input) return;
+  let val = parseInt(input.value || '0', 10);
+  val = Math.max(0, val + delta);
+  input.value = val;
 }
 
 function closeEditModal() {
@@ -601,13 +672,20 @@ async function openEditModal(productId) {
   const pillsHtml = SIZES.map(sz => {
     const checked = existingSizes.has(sz) ? 'checked' : '';
     const stockVal = stockMap[sz] !== undefined ? stockMap[sz] : 0;
-    const display = existingSizes.has(sz) ? 'inline-block' : 'none';
+    const display = existingSizes.has(sz) ? 'flex' : 'none';
     const pillBg = existingSizes.has(sz) ? 'var(--cream-warm)' : '#f7f4f0';
     const pillBorder = existingSizes.has(sz) ? 'var(--maroon)' : 'var(--border-subtle)';
-    return `<div class="size-row" style="display:flex;align-items:center;gap:8px;background:${pillBg};border:1px solid ${pillBorder};border-radius:4px;padding:8px 12px">
-      <input type="checkbox" id="em-size-${esc(sz)}" name="em-sizes[]" value="${esc(sz)}" ${checked} onchange="emToggleStock(this)" style="width:16px;height:16px;accent-color:var(--maroon);cursor:pointer"/>
-      <label for="em-size-${esc(sz)}" style="font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;min-width:36px">${esc(sz)}</label>
-      <input type="number" id="em-stock-${esc(sz)}" min="0" value="${stockVal}" placeholder="qty" style="display:${display};width:72px;height:32px;border:1px solid #ddd;border-radius:4px;padding:0 8px;font-size:12px;text-align:center"/>
+    return `<div class="size-row" style="display:flex;align-items:center;justify-content:between;gap:8px;background:${pillBg};border:1px solid ${pillBorder};border-radius:4px;padding:8px 12px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:8px;flex:1">
+        <input type="checkbox" id="em-size-${esc(sz)}" name="em-sizes[]" value="${esc(sz)}" ${checked} onchange="emToggleStock(this)" style="width:16px;height:16px;accent-color:var(--maroon);cursor:pointer"/>
+        <label for="em-size-${esc(sz)}" style="font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;min-width:36px">${esc(sz)}</label>
+      </div>
+      <div id="em-stock-ctrl-${esc(sz)}" style="display:${display};align-items:center;gap:4px">
+        <span style="font-size:10px;color:#888;margin-right:4px">Stock:</span>
+        <button onclick="adjustStock('${esc(sz)}', -1)" style="width:28px;height:28px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer;font-weight:bold">-</button>
+        <input type="number" id="em-stock-${esc(sz)}" min="0" value="${stockVal}" style="width:50px;height:28px;border:1px solid #ddd;border-radius:4px;text-align:center;font-size:12px"/>
+        <button onclick="adjustStock('${esc(sz)}', 1)" style="width:28px;height:28px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer;font-weight:bold">+</button>
+      </div>
     </div>`;
   }).join('');
 

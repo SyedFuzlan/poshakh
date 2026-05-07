@@ -5,17 +5,15 @@ import { useCallback, useEffect, useState } from "react";
 
 const slides = [
   {
-    image: "/images/hero/hero4.png",
+    desktop: "/images/hero/zohra/web/hero1_web.png",
+    mobile: "/images/hero/zohra/mobile/hero1_mobile.png",
     link: "/products?cat=lehenga",
   },
-  // {
-  //   image: "/images/hero/hero2.png",
-  //   link: "/products?cat=sarees",
-  // },
-  // {
-  //   image: "/images/hero/hero3.png",
-  //   link: "/products?cat=anarkali",
-  // },
+  {
+    desktop: "/images/hero/zohra/web/hero2_web.png",
+    mobile: "/images/hero/zohra/mobile/hero2_mobile.png",
+    link: "/products?cat=sarees",
+  },
 ];
 
 export default function HeroBanner() {
@@ -42,14 +40,30 @@ export default function HeroBanner() {
           style={{ opacity: i === current ? 1 : 0, zIndex: i === current ? 1 : 0 }}
           tabIndex={i === current ? 0 : -1}
         >
-          <Image
-            src={slide.image}
-            alt="ZOHRA Collection"
-            fill
-            className="object-cover object-top"
-            priority={i === 0}
-            sizes="100vw"
-          />
+          {/* Desktop Image */}
+          <div className="hidden md:block absolute inset-0">
+            <Image
+              src={slide.desktop}
+              alt="ZOHRA Collection"
+              fill
+              className="object-cover object-top"
+              priority={i === 0}
+              sizes="100vw"
+              quality={90}
+            />
+          </div>
+          {/* Mobile Image */}
+          <div className="block md:hidden absolute inset-0">
+            <Image
+              src={slide.mobile}
+              alt="ZOHRA Collection"
+              fill
+              className="object-cover object-top"
+              priority={i === 0}
+              sizes="100vw"
+              quality={85}
+            />
+          </div>
         </Link>
       ))}
 

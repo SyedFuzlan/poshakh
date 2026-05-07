@@ -28,14 +28,14 @@ export default function Navbar() {
   }, []);
 
   const navBg = isScrolled
-    ? "bg-poshakh-cream border-b border-poshakh-gold shadow-sm"
+    ? "bg-zohra-cream/95 backdrop-blur-md border-b border-zohra-gold/30 shadow-sm"
     : "bg-transparent border-b border-transparent";
-  const logoColor = isScrolled ? "text-poshakh-gold" : "text-white";
-  const taglineColor = isScrolled ? "text-poshakh-charcoal" : "text-white/80";
-  const linkColor = isScrolled ? "text-poshakh-charcoal hover:text-poshakh-maroon" : "text-white hover:opacity-70";
-  const iconColor = isScrolled ? "text-poshakh-charcoal hover:text-poshakh-maroon" : "text-white hover:opacity-70";
-  const barColor = isScrolled ? "bg-poshakh-maroon" : "bg-white";
-  const badgeBg = isScrolled ? "bg-poshakh-maroon text-poshakh-gold" : "bg-white text-poshakh-charcoal";
+  const logoColor = isScrolled ? "text-zohra-gold" : "text-white";
+  const taglineColor = isScrolled ? "text-zohra-charcoal" : "text-white/80";
+  const linkColor = isScrolled ? "text-zohra-charcoal hover:text-zohra-maroon" : "text-white hover:opacity-70";
+  const iconColor = isScrolled ? "text-zohra-charcoal hover:text-zohra-maroon" : "text-white hover:opacity-70";
+  const barColor = isScrolled ? "bg-zohra-maroon" : "bg-white";
+  const badgeBg = isScrolled ? "bg-zohra-maroon text-zohra-gold" : "bg-white text-zohra-charcoal";
 
   return (
     <>
