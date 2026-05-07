@@ -13,11 +13,6 @@ if (typeof window !== 'undefined') {
 
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    // Capture pageviews manually for SPA transitions
-    const handleRouteChange = () => {
-      posthog.capture('$pageview')
-    }
-
     // Capture UTM parameters
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
@@ -40,14 +35,14 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
 }
 
 // Utility to track events from anywhere
-export const trackEvent = (event: string, properties?: Record<string, any>) => {
+export const trackEvent = (event: string, properties?: Record<string, unknown>) => {
   if (typeof window !== 'undefined') {
     posthog.capture(event, properties)
   }
 }
 
 // Utility to identify user (e.g. after login)
-export const identifyUser = (id: string, traits?: Record<string, any>) => {
+export const identifyUser = (id: string, traits?: Record<string, unknown>) => {
   if (typeof window !== 'undefined') {
     posthog.identify(id, traits)
   }
