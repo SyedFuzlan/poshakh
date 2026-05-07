@@ -59,6 +59,11 @@ export default function CheckoutPage() {
   const [upiStep, setUpiStep] = useState<UpiStep>("idle");
   const [upiUtr, setUpiUtr] = useState("");
 
+  const subtotal = cart.reduce((t, i) => t + i.price * i.quantity, 0);
+  const shippingCost = shipping === "express" && subtotal < 25000 ? 199 : 0;
+  const discount = appliedPromo?.discount_paise ? Math.floor(appliedPromo.discount_paise / 100) : 0;
+  const total = Math.max(0, subtotal + shippingCost - discount);
+
   // Track checkout start
   useEffect(() => {
     if (cart.length > 0) {
@@ -77,11 +82,6 @@ export default function CheckoutPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const subtotal = cart.reduce((t, i) => t + i.price * i.quantity, 0);
-  const shippingCost = shipping === "express" && subtotal < 25000 ? 199 : 0;
-  const discount = appliedPromo?.discount_paise ? Math.floor(appliedPromo.discount_paise / 100) : 0;
-  const total = Math.max(0, subtotal + shippingCost - discount);
 
   if (cart.length === 0) {
     return (
