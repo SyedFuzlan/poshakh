@@ -10,6 +10,7 @@ const path = require("path");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const { initDb } = require("./db");
+const logger = require("./utils/logger");
 
 // ── Env validation ──────────────────────────────
 const required = ["OWNER_EMAIL", "OWNER_PASSWORD", "JWT_SECRET"];
@@ -102,7 +103,7 @@ app.use((_req, res) => {
 
 // Global error handler
 app.use((err, _req, res, _next) => {
-  console.error("Unhandled error:", err);
+  logger.error(err, "Unhandled error");
   res.status(500).json({ error: "Internal server error" });
 });
 

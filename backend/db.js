@@ -167,6 +167,15 @@ async function initDb() {
       image      TEXT,
       FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      admin_id   TEXT,
+      action     TEXT    NOT NULL,
+      details    TEXT,
+      old_value  TEXT,
+      new_value  TEXT,
+      created_at TEXT    DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+    );
   `);
 
   // ── safe migrations (columns that may not exist in older DBs) ─────────
@@ -213,6 +222,26 @@ function transaction(fn) {
   }
 }
 
+/**
+ * Logs an admin action to the audit_logs table.
+ */
+function logAudit({ adminId, action, details, oldValue, newValue }) {
+  try {
+    db.prepare(`
+      INSERT INTO audit_logs (admin_id, action, details, old_value, new_value)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(
+      adminId || 'system',
+      action,
+      details || null,
+      oldValue ? JSON.stringify(oldValue) : null,
+      newValue ? JSON.stringify(newValue) : null
+    );
+  } catch (err) {
+    console.error('[db] Audit log failed:', err.message);
+  }
+}
+
 // ── module exports ────────────────────────────────────────────────────────
 
 module.exports = {
@@ -220,5 +249,5 @@ module.exports = {
   saveDb,
   getDb,
   // The 'db' object is what routes import: const db = require('../db').db
-  db: { prepare, transaction },
+  db: { prepare, transaction, logAudit },
 };

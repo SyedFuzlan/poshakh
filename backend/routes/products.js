@@ -11,6 +11,7 @@ const path = require("path");
 const fs = require("fs");
 const db = require("../db").db;
 const requireOwner = require("../middleware/requireOwner");
+const logger = require("../utils/logger");
 
 const router = express.Router();
 
@@ -230,6 +231,13 @@ router.post(
         ).run(productId, size, isNaN(stock) ? 0 : Math.max(0, stock));
       });
 
+      // Audit log
+      db.logAudit({
+        action: 'PRODUCT_CREATE',
+        details: `Created product: ${name.trim()}`,
+        newValue: { name: name.trim(), price: priceNum, stock: totalStock }
+      });
+
       const newRows = db.prepare(`
         SELECT p.*,
                pv.id    AS variant_id,
@@ -251,9 +259,10 @@ router.post(
           stock: r.variant_stock
         }));
 
+      logger.info({ productId, name: name.trim() }, "Product created");
       res.status(201).json({ product: formatProduct(newRows[0], newVariants) });
     } catch (err) {
-      console.error("POST /api/products error:", err);
+      logger.error(err, "POST /api/products error");
       res.status(500).json({ error: "Failed to create product" });
     }
   }
@@ -284,9 +293,18 @@ router.delete("/:id", requireOwner, (req, res) => {
 
     // Delete record unconditionally — image cleanup failure must not block deletion
     db.prepare("DELETE FROM products WHERE id = ?").run(req.params.id);
+    
+    // Audit log
+    db.logAudit({
+      action: 'PRODUCT_DELETE',
+      details: `Deleted product ID: ${req.params.id} (${row.name})`,
+      oldValue: row
+    });
+    logger.info({ productId: req.params.id }, "Product deleted");
+
     res.json({ success: true });
   } catch (err) {
-    console.error("DELETE /api/products/:id error:", err);
+    logger.error(err, "Failed to delete product");
     res.status(500).json({ error: "Failed to delete product" });
   }
 });
@@ -359,6 +377,14 @@ router.patch("/:id", requireOwner, (req, res) => {
       ).run(req.params.id, size, isNaN(s) ? 0 : Math.max(0, s));
     });
 
+    // Audit log
+    db.logAudit({
+      action: 'PRODUCT_UPDATE',
+      details: `Updated product ID: ${req.params.id}`,
+      oldValue: { name: existing.name, price: existing.price, stock: existing.stock },
+      newValue: { name: name.trim(), price: priceNum, stock: totalStock }
+    });
+
     // 6. Re-fetch with LEFT JOIN and respond with full product shape
     const rows = db
       .prepare(
@@ -381,9 +407,11 @@ router.patch("/:id", requireOwner, (req, res) => {
         color: r.variant_color,
         stock: r.variant_stock,
       }));
+    
+    logger.info({ productId: req.params.id }, "Product updated");
     res.json({ product: formatProduct(rows[0], variants) });
   } catch (err) {
-    console.error("PATCH /api/products/:id error:", err);
+    logger.error(err, "PATCH /api/products/:id error");
     res.status(500).json({ error: "Failed to update product" });
   }
 });

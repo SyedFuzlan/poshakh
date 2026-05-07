@@ -44,6 +44,8 @@ function validateOrderData(data) {
   return null;
 }
 
+const logger = require("../utils/logger");
+
 // ── Save order to DB ────────────────────────────
 // Uses a flat orders table that stores address fields inline + items as JSON.
 function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOrderId, utr, orderData }) {
@@ -53,10 +55,8 @@ function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOrderId,
     customer_email,
     address,
     items,
-    subtotal = orderData.total,
     shipping_method = "free",
     shipping_cost = 0,
-    total,
   } = orderData;
 
   const status = paymentMethod === "upi"
@@ -67,24 +67,49 @@ function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOrderId,
 
   // Using db.transaction to ensure atomicity
   return db.transaction(() => {
-    // 1. Verify stock for all items first
+    let calculatedSubtotalPaise = 0;
+    
+    // 1. Verify stock and Recalculate Price for all items
     if (Array.isArray(items)) {
       for (const item of items) {
         if (!item.product_id || !item.size) continue;
         
+        // Fetch product and variant details from DB
+        const product = db.prepare(`SELECT price, price_paise FROM products WHERE id = ?`).get(item.product_id);
         const variant = db.prepare(`
           SELECT stock FROM product_variants 
           WHERE product_id = ? AND size = ?
         `).get(item.product_id, item.size);
 
-        if (!variant) {
+        if (!product || !variant) {
+          logger.warn({ orderId, product_id: item.product_id, size: item.size }, "Product or variant not found");
           throw new Error(`Product variant ${item.name} (${item.size}) not found.`);
         }
         
         if (variant.stock < (item.quantity || 1)) {
+          logger.warn({ orderId, product_id: item.product_id, size: item.size, stock: variant.stock }, "Insufficient stock");
           throw new Error(`Insufficient stock for ${item.name} (${item.size}). Available: ${variant.stock}`);
         }
+
+        // Use price_paise if available, otherwise convert price to paise
+        const itemPricePaise = product.price_paise || Math.round(product.price * 100);
+        calculatedSubtotalPaise += itemPricePaise * (item.quantity || 1);
       }
+    }
+
+    const shippingCostPaise = Math.round(shipping_cost * 100);
+    const calculatedTotalPaise = calculatedSubtotalPaise + shippingCostPaise;
+    const frontendTotalPaise = Math.round(orderData.total * 100);
+
+    // Security Check: Price Mismatch
+    // We allow a 1% variance for weird rounding issues, but anything else is suspicious
+    if (Math.abs(calculatedTotalPaise - frontendTotalPaise) > (calculatedTotalPaise * 0.01)) {
+      logger.error({ 
+        orderId, 
+        calculated: calculatedTotalPaise, 
+        frontend: frontendTotalPaise 
+      }, "Price mismatch detected! Potential tampering.");
+      throw new Error("Order total mismatch. Please refresh your cart and try again.");
     }
 
     // 2. Insert the order
@@ -117,11 +142,11 @@ function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOrderId,
       address.state.trim(),
       address.pin_code.trim(),
       JSON.stringify(items),
-      Math.round(subtotal * 100),
+      calculatedSubtotalPaise,
       shipping_method,
-      Math.round(shipping_cost * 100),
-      Math.round(total * 100),
-      total,           // total_amount — original NOT NULL column
+      shippingCostPaise,
+      calculatedTotalPaise,
+      calculatedTotalPaise / 100,
       status
     );
 
@@ -138,6 +163,7 @@ function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOrderId,
       }
     }
 
+    logger.info({ orderId, total: calculatedTotalPaise / 100, method: paymentMethod }, "Order saved successfully");
     return orderId;
   });
 }
