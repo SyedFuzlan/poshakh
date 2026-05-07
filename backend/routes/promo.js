@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { db } = require('../db');
-const { requireOwner } = require('./auth');
+const requireOwner = require('../middleware/requireOwner');
 
 // ── Admin Routes ────────────────────────────────────────────────────────────
 
