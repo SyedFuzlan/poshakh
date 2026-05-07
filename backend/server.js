@@ -36,7 +36,9 @@ app.use(
         origin.endsWith('.up.railway.app') ||
         origin.endsWith('.vercel.app') ||
         origin === 'http://localhost:3000' ||
-        origin === 'http://localhost:9000'
+        origin === 'http://localhost:9000' ||
+        origin === 'https://www.madebyzohra.in' ||
+        origin === 'https://madebyzohra.in'
       ) {
         return callback(null, true);
       }
