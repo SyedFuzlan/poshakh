@@ -15,7 +15,7 @@ const requireOwner = require("../middleware/requireOwner");
 const router = express.Router();
 
 // ── Image upload config ─────────────────────────
-const UPLOADS_DIR = path.join(__dirname, "..", "uploads");
+const UPLOADS_DIR = path.join(__dirname, "..", "data", "uploads");
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 const storage = multer.diskStorage({

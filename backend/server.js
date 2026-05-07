@@ -61,7 +61,7 @@ app.use((req, res, next) => {
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Serve uploaded images as static files
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/uploads", express.static(path.join(__dirname, "data", "uploads")));
 
 // Serve the owner dashboard as a static HTML file
 app.use("/dashboard", express.static(path.join(__dirname, "dashboard")));
