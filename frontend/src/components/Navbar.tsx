@@ -61,25 +61,24 @@ export default function Navbar() {
           >
             <span
               className={`transition-colors mt-1 ${taglineColor}`}
-              style={{ 
-                fontSize: "10px", 
+              style={{
+                fontSize: "10px",
                 letterSpacing: "1px",
                 fontFamily: "'Brice SemiExpanded', sans-serif",
-                fontWeight: 200, // ExtraLight
                 textTransform: "none" // "made By"
               }}
             >
-              made By
+              Made By
             </span>
             <span
-              className={`leading-none transition-colors ${logoColor}`}
-              style={{ 
-                fontSize: "36px", 
+              className={`uppercase leading-none transition-colors ${logoColor}`}
+              style={{
+                fontSize: "36px",
                 letterSpacing: "1px",
                 fontFamily: "'Coterie', serif"
               }}
             >
-              Zohra
+              ZOHRA
             </span>
           </Link>
 

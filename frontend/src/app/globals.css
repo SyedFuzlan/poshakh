@@ -1,5 +1,22 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'Brice SemiExpanded';
+  src: url('/fonts/brice-semi-expanded-semi-bold.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Coterie';
+  src: url('/fonts/coterie-regular.woff2') format('woff2'),
+       url('/fonts/coterie-regular.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
   --font-heading: var(--font-cormorant);
   --font-body: var(--font-dm-sans);
