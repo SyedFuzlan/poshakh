@@ -260,7 +260,8 @@ async function initDb() {
   };
 
   safeMigrate('ALTER TABLE products ADD COLUMN category_id INTEGER');
-  safeMigrate('ALTER TABLE products ADD COLUMN slug TEXT UNIQUE');
+  safeMigrate('ALTER TABLE products ADD COLUMN slug TEXT');
+  safeMigrate('CREATE UNIQUE INDEX IF NOT EXISTS idx_products_slug ON products(slug)');
   safeMigrate('ALTER TABLE products ADD COLUMN meta_title TEXT');
   safeMigrate('ALTER TABLE products ADD COLUMN meta_description TEXT');
   safeMigrate('ALTER TABLE order_items ADD COLUMN price_paise INTEGER');
