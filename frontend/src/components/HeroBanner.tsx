@@ -1,20 +1,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
 
-const slides = [
-  {
-    desktop: "/images/hero/zohra/web/hero1_web.png",
-    mobile: "/images/hero/zohra/mobile/hero1_mobile.png",
-    link: "/products?cat=lehenga",
-  },
-  {
-    desktop: "/images/hero/zohra/web/hero2_web.png",
-    mobile: "/images/hero/zohra/mobile/hero2_mobile.png",
-    link: "/products?cat=sarees",
-  },
-];
 
 export default function HeroBanner() {
   return (
