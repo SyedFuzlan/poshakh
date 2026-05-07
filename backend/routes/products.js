@@ -448,14 +448,15 @@ router.patch("/:id", requireOwner, (req, res) => {
           );
         }
       }
-    });
+      });
+    }
 
     // Audit log
     db.logAudit({
       action: 'PRODUCT_UPDATE',
       details: `Updated product ID: ${req.params.id}`,
-      oldValue: { name: existing.name, price: existing.price, stock: existing.stock },
-      newValue: { name: name.trim(), price: priceNum, stock: totalStock }
+      oldValue: { name: existing.name, price: existing.price_paise },
+      newValue: { name: name || existing.name, price: price ? Math.round(price * 100) : existing.price_paise }
     });
 
     // 6. Re-fetch with LEFT JOIN and respond with full product shape
