@@ -7,6 +7,8 @@ require("dotenv").config({ path: require("path").join(__dirname, ".env") });
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 const { initDb } = require("./db");
 
 // ── Env validation ──────────────────────────────
@@ -21,24 +23,39 @@ if (missing.length > 0) {
 // ── App setup ───────────────────────────────────
 const app = express();
 
-// Required for Express to correctly handle HTTPS behind proxies (Railway, Vercel)
+// Security and Rate Limiting
 app.set("trust proxy", 1);
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const authLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  message: { error: "Too many login attempts, please try again later." }
+});
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow no-origin requests (curl, Postman, SSR, etc.)
       if (!origin) return callback(null, true);
 
-      // Always allow Railway and Vercel deployments for this app
       if (
         origin.endsWith('.up.railway.app') ||
         origin.endsWith('.vercel.app') ||
         origin === 'http://localhost:3000' ||
         origin === 'http://localhost:9000' ||
         origin === 'https://www.madebyzohra.in' ||
-        origin === 'https://madebyzohra.in'
+        origin === 'https://madebyzohra.in' ||
+        origin === 'https://www.www.madebyzohra.in'
       ) {
         return callback(null, true);
       }
@@ -67,11 +84,11 @@ app.use("/uploads", express.static(path.join(__dirname, "data", "uploads")));
 app.use("/dashboard", express.static(path.join(__dirname, "dashboard")));
 
 // ── Routes ──────────────────────────────────────
-app.use("/api/auth", require("./routes/auth"));
-app.use("/api/customers", require("./routes/customers"));
+app.use("/api/auth", authLimiter, require("./routes/auth"));
+app.use("/api/customers", authLimiter, require("./routes/customers"));
 app.use("/api/products", require("./routes/products"));
-app.use("/api/orders", require("./routes/orders"));
-app.use("/api/payments", require("./routes/payments").router);
+app.use("/api/orders", apiLimiter, require("./routes/orders"));
+app.use("/api/payments", apiLimiter, require("./routes/payments").router);
 
 // Health check
 app.get("/", (_req, res) => {

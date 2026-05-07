@@ -65,31 +65,29 @@ function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOrderId,
       ? "pending"
       : "paid";
 
-  // Ensure the orders table has all required columns (graceful degradation)
-  const safeMigrate = (sql) => {
-    try { db.prepare(sql).run(); } catch (e) {
-      if (!String(e.message).includes('duplicate column')) console.error('[orders migration]', e.message);
+  // Using db.transaction to ensure atomicity
+  return db.transaction(() => {
+    // 1. Verify stock for all items first
+    if (Array.isArray(items)) {
+      for (const item of items) {
+        if (!item.product_id || !item.size) continue;
+        
+        const variant = db.prepare(`
+          SELECT stock FROM product_variants 
+          WHERE product_id = ? AND size = ?
+        `).get(item.product_id, item.size);
+
+        if (!variant) {
+          throw new Error(`Product variant ${item.name} (${item.size}) not found.`);
+        }
+        
+        if (variant.stock < (item.quantity || 1)) {
+          throw new Error(`Insufficient stock for ${item.name} (${item.size}). Available: ${variant.stock}`);
+        }
+      }
     }
-  };
 
-  safeMigrate('ALTER TABLE orders ADD COLUMN razorpay_payment_id TEXT');
-  safeMigrate('ALTER TABLE orders ADD COLUMN customer_name TEXT');
-  safeMigrate('ALTER TABLE orders ADD COLUMN customer_phone TEXT');
-  safeMigrate('ALTER TABLE orders ADD COLUMN customer_email TEXT');
-  safeMigrate('ALTER TABLE orders ADD COLUMN payment_method TEXT');
-  safeMigrate('ALTER TABLE orders ADD COLUMN address_line1 TEXT');
-  safeMigrate('ALTER TABLE orders ADD COLUMN address_line2 TEXT');
-  safeMigrate('ALTER TABLE orders ADD COLUMN city TEXT');
-  safeMigrate('ALTER TABLE orders ADD COLUMN state TEXT');
-  safeMigrate('ALTER TABLE orders ADD COLUMN pin_code TEXT');
-  safeMigrate('ALTER TABLE orders ADD COLUMN items_json TEXT');
-  safeMigrate('ALTER TABLE orders ADD COLUMN subtotal_paise INTEGER');
-  safeMigrate('ALTER TABLE orders ADD COLUMN shipping_method TEXT');
-  safeMigrate('ALTER TABLE orders ADD COLUMN shipping_cost_paise INTEGER');
-  safeMigrate('ALTER TABLE orders ADD COLUMN total_paise INTEGER');
-  safeMigrate('ALTER TABLE orders ADD COLUMN shipped_at TEXT');
-
-  try {
+    // 2. Insert the order
     db.prepare(`
       INSERT INTO orders (
         id, razorpay_payment_id, razorpay_order_id, utr, payment_method,
@@ -127,23 +125,21 @@ function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOrderId,
       status
     );
 
-    // Decrement stock for each item in the order
+    // 3. Decrement stock
     if (Array.isArray(items)) {
       for (const item of items) {
-        // item.id is product_id, item.size is the variant size
-        if (item.id && item.size) {
+        if (item.product_id && item.size) {
           db.prepare(`
             UPDATE product_variants 
-            SET stock = MAX(0, stock - ?) 
+            SET stock = stock - ? 
             WHERE product_id = ? AND size = ?
-          `).run(parseInt(item.quantity || 1, 10), item.id, item.size);
+          `).run(parseInt(item.quantity || 1, 10), item.product_id, item.size);
         }
       }
     }
-  } catch (err) {
-    console.error("saveOrder error:", err);
-    throw err;
-  }
+
+    return orderId;
+  });
 }
 
 // ── POST /api/payments/create-order ────────────

@@ -90,6 +90,7 @@ async function initDb() {
     : new SQL.Database();
 
   console.log('[db] Initialising schema…');
+  _db.run('PRAGMA foreign_keys = ON;');
 
   // ── tables ────────────────────────────────────────────────────────────
   _db.run(`
@@ -138,7 +139,19 @@ async function initDb() {
       payment_method   TEXT,
       shipping_address TEXT,
       razorpay_order_id TEXT,
+      razorpay_payment_id TEXT,
       utr              TEXT,
+      address_line1    TEXT,
+      address_line2    TEXT,
+      city             TEXT,
+      state            TEXT,
+      pin_code         TEXT,
+      items_json       TEXT,
+      subtotal_paise   INTEGER,
+      shipping_method  TEXT,
+      shipping_cost_paise INTEGER,
+      total_paise      INTEGER,
+      shipped_at       TEXT,
       created_at       TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
     );
 
@@ -166,6 +179,7 @@ async function initDb() {
   safeMigrate('ALTER TABLE products ADD COLUMN price_paise INTEGER NOT NULL DEFAULT 0');
   safeMigrate('ALTER TABLE products ADD COLUMN collection TEXT NOT NULL DEFAULT ""');
   safeMigrate('ALTER TABLE products ADD COLUMN brand TEXT');
+  safeMigrate('ALTER TABLE orders ADD COLUMN razorpay_payment_id TEXT');
   safeMigrate('ALTER TABLE orders ADD COLUMN customer_name TEXT');
   safeMigrate('ALTER TABLE orders ADD COLUMN customer_email TEXT');
   safeMigrate('ALTER TABLE orders ADD COLUMN customer_phone TEXT');
@@ -182,6 +196,23 @@ function getDb() {
   return _db;
 }
 
+/**
+ * A simple synchronous transaction helper.
+ * Since sql.js is in-memory, we just run the callback and save to disk once at the end.
+ */
+function transaction(fn) {
+  try {
+    _db.run('BEGIN TRANSACTION');
+    const result = fn();
+    _db.run('COMMIT');
+    _save();
+    return result;
+  } catch (err) {
+    _db.run('ROLLBACK');
+    throw err;
+  }
+}
+
 // ── module exports ────────────────────────────────────────────────────────
 
 module.exports = {
@@ -189,5 +220,5 @@ module.exports = {
   saveDb,
   getDb,
   // The 'db' object is what routes import: const db = require('../db').db
-  db: { prepare },
+  db: { prepare, transaction },
 };
