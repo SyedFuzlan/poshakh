@@ -305,7 +305,7 @@ function transaction(fn) {
  */
 function logAudit({ adminId, action, details, oldValue, newValue }) {
   try {
-    db.prepare(`
+    prepare(`
       INSERT INTO audit_logs (admin_id, action, details, old_value, new_value)
       VALUES (?, ?, ?, ?, ?)
     `).run(
@@ -321,23 +321,6 @@ function logAudit({ adminId, action, details, oldValue, newValue }) {
 }
 
 // ── module exports ────────────────────────────────────────────────────────
-
-db.logAudit = ({ adminId, action, details, oldValue, newValue }) => {
-  try {
-    db.prepare(`
-      INSERT INTO audit_logs (admin_id, action, details, old_value, new_value)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(
-      adminId || null,
-      action,
-      details || null,
-      oldValue ? JSON.stringify(oldValue) : null,
-      newValue ? JSON.stringify(newValue) : null
-    );
-  } catch (err) {
-    console.error("Failed to write audit log:", err);
-  }
-};
 
 module.exports = {
   initDb,
