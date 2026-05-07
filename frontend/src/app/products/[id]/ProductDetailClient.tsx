@@ -7,6 +7,7 @@ import { Product } from "@/types";
 import { useStore } from "@/store";
 import { getSimilarProducts } from "@/lib/products";
 import ProductCard from "@/components/ProductCard";
+import { trackEvent } from "@/components/PostHogProvider";
 
 // ── Color helpers ───────────────────────────────────────────────
 const COLOR_SWATCHES: Record<string, string> = {
@@ -52,6 +53,19 @@ export default function ProductDetailClient({ product }: { product: Product }) {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Track product view
+  useEffect(() => {
+    if (product) {
+      trackEvent('product_viewed', {
+        product_id: product.id,
+        name: product.name,
+        category: product.category,
+        price: product.price,
+        stock_status: allOOS ? 'out_of_stock' : 'in_stock'
+      });
+    }
+  }, [product, allOOS]);
+
   // Load similar products and siblings
   useEffect(() => {
     if (product?.id && product?.category) {
@@ -83,8 +97,29 @@ export default function ProductDetailClient({ product }: { product: Product }) {
     };
   };
 
-  const handleAddToCart = () => { addToCart(buildCartItem()); setCartOpen(true); };
-  const handleBuyNow   = () => { addToCart(buildCartItem()); router.push("/checkout"); };
+  const handleAddToCart = () => { 
+    const item = buildCartItem();
+    addToCart(item); 
+    setCartOpen(true); 
+    trackEvent('product_added_to_cart', {
+      product_id: product.id,
+      name: product.name,
+      variant: item.size,
+      price: product.price
+    });
+  };
+
+  const handleBuyNow = () => { 
+    const item = buildCartItem();
+    addToCart(item); 
+    trackEvent('buy_now_clicked', {
+      product_id: product.id,
+      name: product.name,
+      variant: item.size,
+      price: product.price
+    });
+    router.push("/checkout"); 
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
@@ -179,7 +214,15 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                     return (
                       <button
                         key={v.size}
-                        onClick={() => !oos && setSelectedSize(v.size)}
+                        onClick={() => {
+                          if (!oos) {
+                            setSelectedSize(v.size);
+                            trackEvent('product_variant_selected', {
+                              product_id: product.id,
+                              size: v.size
+                            });
+                          }
+                        }}
                         disabled={oos}
                         className={`w-14 h-14 border flex items-center justify-center font-bold transition-all
                           ${oos

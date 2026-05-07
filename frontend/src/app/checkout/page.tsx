@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useStore } from "@/store";
 import { ShippingAddress } from "@/types";
+import { trackEvent, identifyUser } from "@/components/PostHogProvider";
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:9000";
 const UPI_ID = "8919273494@ybl";
@@ -48,20 +49,39 @@ export default function CheckoutPage() {
   const [shipping, setShipping] = useState<"free" | "express">("free");
   const [paying, setPaying] = useState(false);
 
+  // Promo code state
+  const [promoCode, setPromoCode] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discount_paise: number } | null>(null);
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoError, setPromoError] = useState("");
+
   // UPI flow state
   const [upiStep, setUpiStep] = useState<UpiStep>("idle");
   const [upiUtr, setUpiUtr] = useState("");
 
-  // Pre-fill address from saved store state if customer has a saved address
+  // Track checkout start
   useEffect(() => {
-    if (!customer?.id || savedAddress) return;
-    // Address pre-fill from saved store state only (no server call needed)
+    if (cart.length > 0) {
+      trackEvent('checkout_started', {
+        cart_total: total,
+        item_count: cart.length,
+        items: cart.map(i => ({ name: i.name, id: i.productId, price: i.price }))
+      });
+    }
+
+    if (customer?.id) {
+      identifyUser(customer.id, {
+        email: customer.email,
+        name: `${customer.firstName} ${customer.lastName}`
+      });
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customer?.id]);
+  }, []);
 
   const subtotal = cart.reduce((t, i) => t + i.price * i.quantity, 0);
   const shippingCost = shipping === "express" && subtotal < 25000 ? 199 : 0;
-  const total = subtotal + shippingCost;
+  const discount = appliedPromo?.discount_paise ? Math.floor(appliedPromo.discount_paise / 100) : 0;
+  const total = Math.max(0, subtotal + shippingCost - discount);
 
   if (cart.length === 0) {
     return (
@@ -81,6 +101,21 @@ export default function CheckoutPage() {
     e.preventDefault();
     setSavedAddress(addr);
     setStep(2);
+    
+    // Track checkout intent (Abandoned Cart Recovery)
+    const checkoutId = `CK-${Date.now()}`; // Or use a persistent ID
+    fetch(`${BACKEND}/api/checkouts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: checkoutId,
+        customer_name: `${addr.firstName} ${addr.lastName}`,
+        customer_phone: addr.phone,
+        customer_email: customer?.email ?? guestEmail,
+        items_json: JSON.stringify(cart.map(i => ({ name: i.name, productId: i.productId, quantity: i.quantity, price: i.price, size: i.size }))),
+        total_paise: total * 100
+      })
+    }).catch(err => console.error("Failed to track checkout intent:", err));
   };
 
   // Build order payload from current cart state
@@ -108,6 +143,8 @@ export default function CheckoutPage() {
       subtotal,
       shipping_method: shipping,
       shipping_cost: shippingCost,
+      promo_code: appliedPromo?.code ?? null,
+      discount_paise: appliedPromo?.discount_paise ?? 0,
       total,
     };
   }
@@ -125,6 +162,16 @@ export default function CheckoutPage() {
     };
     setPendingOrder(pendingOrder);
     addOrder(pendingOrder);
+    
+    // Track purchase
+    trackEvent('purchase_completed', {
+      order_id: pendingOrder.id,
+      payment_id: paymentId,
+      total_revenue: total,
+      item_count: cart.length,
+      shipping_method: shipping
+    });
+
     clearCart();
     router.push(`/order-confirmation?paymentId=${paymentId}`);
   };
@@ -160,6 +207,30 @@ export default function CheckoutPage() {
       else alert(data.error ?? "Failed to place order. Please try again.");
     } catch { alert("Network error. Please try again."); }
     finally { setPaying(false); }
+  };
+
+  const handleApplyPromo = async () => {
+    if (!promoCode) return;
+    setPromoLoading(true);
+    setPromoError("");
+    try {
+      const res = await fetch(`${BACKEND}/api/promo/validate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: promoCode, order_amount_paise: subtotal * 100 }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setAppliedPromo({ code: promoCode, discount_paise: data.discount_paise });
+        trackEvent('promo_applied', { code: promoCode, discount: data.discount_paise / 100 });
+      } else {
+        setPromoError(data.error || "Invalid promo code");
+      }
+    } catch {
+      setPromoError("Failed to validate promo code");
+    } finally {
+      setPromoLoading(false);
+    }
   };
 
   const upiLink = `upi://pay?pa=${encodeURIComponent(UPI_ID)}&pn=${encodeURIComponent("ZOHRA")}&am=${total.toFixed(2)}&cu=INR&tn=${encodeURIComponent("ZOHRA Order")}`;
@@ -462,10 +533,60 @@ export default function CheckoutPage() {
               </div>
             ))}
 
-            <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "16px", marginTop: "8px" }}>
+            {/* Promo Code Input */}
+            <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "20px", marginTop: "20px" }}>
+              <div style={{ display: "flex", gap: "10px" }}>
+                <input
+                  type="text"
+                  placeholder="Promo code"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                  style={{ ...inputStyle, flex: 1 }}
+                  disabled={!!appliedPromo || promoLoading}
+                />
+                <button
+                  onClick={handleApplyPromo}
+                  disabled={!promoCode || !!appliedPromo || promoLoading}
+                  style={{
+                    backgroundColor: appliedPromo ? "#16a34a" : "#3D0D16",
+                    color: "#fff",
+                    padding: "0 20px",
+                    border: "none",
+                    borderRadius: "4px",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    opacity: (!promoCode || promoLoading) && !appliedPromo ? 0.5 : 1
+                  }}
+                >
+                  {appliedPromo ? "APPLIED" : promoLoading ? "..." : "APPLY"}
+                </button>
+              </div>
+              {promoError && <p style={{ fontSize: "12px", color: "#ef4444", marginTop: "8px" }}>{promoError}</p>}
+              {appliedPromo && (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "10px" }}>
+                  <span style={{ fontSize: "13px", color: "#16a34a", fontWeight: 500 }}>
+                    Code {appliedPromo.code} applied!
+                  </span>
+                  <button
+                    onClick={() => { setAppliedPromo(null); setPromoCode(""); }}
+                    style={{ background: "none", border: "none", color: "#888", fontSize: "12px", cursor: "pointer", textDecoration: "underline" }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "16px", marginTop: "24px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", color: "#555", marginBottom: "10px" }}>
                 <span>Subtotal</span><span>₹{subtotal.toLocaleString("en-IN")}</span>
               </div>
+              {discount > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", color: "#16a34a", marginBottom: "10px" }}>
+                  <span>Discount</span><span>-₹{discount.toLocaleString("en-IN")}</span>
+                </div>
+              )}
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", color: "#555", marginBottom: "16px" }}>
                 <span>Shipping</span>
                 <span>{shippingCost === 0 ? "FREE" : `₹${shippingCost}`}</span>
@@ -478,8 +599,10 @@ export default function CheckoutPage() {
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );
 }
+
+// Add handleApplyPromo inside the component
+// I'll add it after handleCOD

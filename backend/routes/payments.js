@@ -9,6 +9,7 @@ const express = require("express");
 const crypto = require("crypto");
 const Razorpay = require("razorpay");
 const db = require("../db").db;
+const { notifyOrderConfirmed } = require("../utils/sms");
 
 const router = express.Router();
 
@@ -144,26 +145,56 @@ function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOrderId,
       JSON.stringify(items),
       calculatedSubtotalPaise,
       shipping_method,
-      shippingCostPaise,
+      shipping_cost, // Keep legacy if needed, but we should use paise
       calculatedTotalPaise,
       calculatedTotalPaise / 100,
       status
     );
 
-    // 3. Decrement stock
+    // 3. Status History
+    db.prepare(`INSERT INTO order_status_history (order_id, status, comment) VALUES (?, ?, ?)`).run(
+      orderId, status, `Order created via ${paymentMethod}`
+    );
+
+    // 4. Items & Stock
     if (Array.isArray(items)) {
       for (const item of items) {
         if (item.product_id && item.size) {
+          // Resolve price for item
+          const product = db.prepare(`SELECT price_paise, price FROM products WHERE id = ?`).get(item.product_id);
+          const pricePaise = product?.price_paise || Math.round((product?.price || 0) * 100);
+          
+          const qty = parseInt(item.quantity || 1, 10);
+
+          // Insert into order_items table
+          db.prepare(`
+            INSERT INTO order_items (order_id, product_id, variant_id, name, quantity, price_paise, size, image)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(orderId, item.product_id, item.variant_id, item.name, qty, pricePaise, item.size, item.image);
+
+          // Decrement stock in product_variants
           db.prepare(`
             UPDATE product_variants 
             SET stock = stock - ? 
             WHERE product_id = ? AND size = ?
-          `).run(parseInt(item.quantity || 1, 10), item.product_id, item.size);
+          `).run(qty, item.product_id, item.size);
+
+          // Log inventory movement
+          const variant = db.prepare(`SELECT id FROM product_variants WHERE product_id = ? AND size = ?`).get(item.product_id, item.size);
+          if (variant) {
+            db.prepare(`INSERT INTO inventory_logs (variant_id, change, reason, order_id) VALUES (?, ?, ?, ?)`).run(
+              variant.id, -qty, 'sale', orderId
+            );
+          }
         }
       }
     }
 
     logger.info({ orderId, total: calculatedTotalPaise / 100, method: paymentMethod }, "Order saved successfully");
+    
+    // Async notification
+    notifyOrderConfirmed(customer_phone, customer_name, orderId, calculatedTotalPaise / 100);
+
     return orderId;
   });
 }

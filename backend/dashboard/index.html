@@ -130,36 +130,93 @@
     <div class="stat"><span class="stat-label">Orders Today</span><span class="stat-value" id="stat-today-orders">—</span></div>
     <div class="stat"><span class="stat-label">Revenue Today</span><span class="stat-value" id="stat-today-revenue">—</span></div>
     <div class="stat"><span class="stat-label">Awaiting Shipment</span><span class="stat-value" id="stat-pending">—</span></div>
+    <div class="stat"><span class="stat-label">Pending Processing</span><span class="stat-value" id="stat-pending-proc">—</span></div>
+    <div class="stat"><span class="stat-label" style="color:#ef4444">Low Stock Items</span><span class="stat-value" id="stat-low-stock" style="color:#ef4444">—</span></div>
     <div class="stat"><span class="stat-label">Total Orders</span><span class="stat-value" id="stat-total">—</span></div>
   </div>
 
   <div class="tabs">
-    <div class="tab active" onclick="switchTab('orders')">📦 Orders</div>
+    <div class="tab active" onclick="switchTab('dashboard')">📊 Dashboard</div>
+    <div class="tab" onclick="switchTab('orders')">📦 Orders</div>
     <div class="tab" onclick="switchTab('products')">🛍️ Products</div>
+    <div class="tab" onclick="switchTab('promo')">🎟️ Promo Codes</div>
+    <div class="tab" onclick="switchTab('settings')">⚙️ Settings</div>
+  </div>
+
+  <!-- DASHBOARD TAB -->
+  <div id="tab-dashboard" class="tab-content active">
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:24px;margin-bottom:32px">
+      <div style="background:#fff;border-radius:8px;padding:24px;border:1px solid var(--border-subtle)">
+        <h3 style="font-size:12px;color:var(--maroon);margin-bottom:20px;text-transform:uppercase;letter-spacing:1px;font-weight:700">📈 Revenue Trend (Last 30 Days)</h3>
+        <div id="report-revenue-chart" style="height:220px;display:flex;align-items:flex-end;gap:8px;padding-top:20px;border-bottom:1px solid #eee">
+          <!-- Chart bars will be injected here -->
+        </div>
+      </div>
+      <div style="background:#fff;border-radius:8px;padding:24px;border:1px solid var(--border-subtle)">
+        <h3 style="font-size:12px;color:var(--maroon);margin-bottom:20px;text-transform:uppercase;letter-spacing:1px;font-weight:700">🏷️ Sales by Category</h3>
+        <div id="report-category-list" style="display:flex;flex-direction:column;gap:16px">
+          <!-- Category stats will be injected here -->
+        </div>
+      </div>
+    </div>
+    <div style="background:#fff;border-radius:8px;padding:24px;border:1px solid var(--border-subtle)">
+      <h3 style="font-size:12px;color:var(--maroon);margin-bottom:20px;text-transform:uppercase;letter-spacing:1px;font-weight:700">🏆 Top Selling Products</h3>
+      <div id="report-top-products" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));gap:16px">
+        <!-- Top products will be injected here -->
+      </div>
+    </div>
   </div>
 
   <!-- ORDERS TAB -->
-  <div id="tab-orders" class="tab-content active">
-    <div class="orders-filter">
-      <button class="filter-btn active" onclick="filterOrders('all',this)">All</button>
-      <button class="filter-btn" onclick="filterOrders('paid',this)">To Ship</button>
-      <button class="filter-btn" onclick="filterOrders('shipped',this)">Shipped</button>
-      <button class="filter-btn" onclick="filterOrders('pending_verification',this)">UPI Pending</button>
+  <div id="tab-orders" class="tab-content">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; gap: 16px; flex-wrap: wrap;">
+      <div style="display: flex; gap: 12px; flex: 1; min-width: 300px;">
+        <div style="position: relative; flex: 1;">
+          <input type="text" id="order-search" placeholder="Search by name, phone, or #ID..." 
+                 onkeyup="if(event.key==='Enter') loadOrders()"
+                 style="width: 100%; height: 40px; padding: 0 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;"/>
+          <button onclick="loadOrders()" style="position: absolute; right: 10px; top: 10px; background: none; border: none; cursor: pointer;">🔍</button>
+        </div>
+        <select id="filter-status" onchange="loadOrders()" 
+                style="height: 40px; padding: 0 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; background: #fff; cursor: pointer;">
+          <option value="">All Statuses</option>
+          <option value="pending">COD Pending</option>
+          <option value="paid">Paid (Razorpay)</option>
+          <option value="pending_verification">UPI Pending</option>
+          <option value="shipped">Shipped</option>
+          <option value="delivered">Delivered</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:12px">
+        <button onclick="openManualOrderModal()" class="btn-primary" style="background:#4b5563">+ Manual Order</button>
+        <button onclick="exportOrdersCSV()" class="btn-primary" 
+                style="background-color: #16a34a; height: 40px; padding: 0 20px; display: flex; align-items: center; gap: 8px;">
+          📥 Export CSV
+        </button>
+      </div>
     </div>
     <div id="orders-list"><div class="loading">Loading orders...</div></div>
   </div>
 
   <!-- PRODUCTS TAB -->
   <div id="tab-products" class="tab-content">
-    <div class="product-form">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+      <div style="display: flex; gap: 12px;">
+        <button onclick="openProductModal()" class="btn-primary">+ Add Product</button>
+        <button onclick="openBulkUpdateModal()" class="btn-primary" style="background:#4b5563">⚖️ Bulk Update</button>
+        <button onclick="toggleLowStockFilter()" id="btn-low-stock" class="filter-btn">⚠️ Low Stock View</button>
+      </div>
+    </div>
+    <div class="product-form" id="add-product-form">
       <h2>Add New Product</h2>
       <div class="form-grid">
         <div class="full">
           <label class="pf-label">Product Image</label>
           <div class="drop-zone" id="drop-zone" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="handleDrop(event)">
-            <input type="file" id="product-image" accept="image/*" onchange="previewImage(this)"/>
-            <img id="img-preview" class="preview-img" style="display:none"/>
-            <p id="drop-text">📸 Drag & drop image here, or click to browse</p>
+            <input type="file" id="product-images" accept="image/*" multiple onchange="previewImages(this)"/>
+            <div id="images-preview-container" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:8px"></div>
+            <p id="drop-text">📸 Drag & drop up to 10 images here, or click to browse</p>
           </div>
         </div>
         <div>
@@ -171,19 +228,40 @@
           <input class="pf-input" id="p-price" type="number" min="1" placeholder="e.g. 5999"/>
         </div>
         <div>
+          <label class="pf-label">Compare-at Price (₹ INR - optional)</label>
+          <input class="pf-input" id="p-compare-at" type="number" min="1" placeholder="e.g. 7999"/>
+        </div>
+        <div>
           <label class="pf-label">Category</label>
-          <select class="pf-input" id="p-category">
-            <option value="">Select category</option>
-            <option value="sarees">Sarees</option>
-            <option value="salwar">Salwar Kameez</option>
-            <option value="lehenga">Lehengas</option>
-            <option value="gowns">Gowns</option>
-            <option value="other">Other</option>
-          </select>
+          <div style="display:flex;gap:8px">
+            <select class="pf-input" id="p-category" style="flex:1">
+              <option value="">Select category</option>
+            </select>
+            <button onclick="addNewCategoryPrompt()" class="btn-primary" style="padding:0 12px;height:40px;background:#4b5563">+</button>
+          </div>
         </div>
         <div>
           <label class="pf-label">Collection (optional)</label>
           <input class="pf-input" id="p-collection" type="text" placeholder="e.g. Wedding Collection"/>
+        </div>
+
+        <!-- SEO SETTINGS -->
+        <div class="full" style="background:#f8fafc;padding:16px;border-radius:8px;margin-top:12px;border:1px solid #e2e8f0">
+          <h4 style="margin-top:0;margin-bottom:12px;display:flex;align-items:center;gap:8px">🔍 SEO Settings <span style="font-size:11px;font-weight:400;color:#64748b">(Recommended for Google)</span></h4>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div>
+              <label class="pf-label">Meta Title</label>
+              <input class="pf-input" id="p-meta-title" type="text" placeholder="SEO Title..."/>
+            </div>
+            <div>
+              <label class="pf-label">URL Slug</label>
+              <input class="pf-input" id="p-slug" type="text" placeholder="maroon-banarasi-saree"/>
+            </div>
+            <div class="full" style="grid-column: span 2">
+              <label class="pf-label">Meta Description</label>
+              <textarea class="pf-input" id="p-meta-description" rows="2" placeholder="Brief summary for search results..."></textarea>
+            </div>
+          </div>
         </div>
 
         <!-- Phase 01: description textarea -->
@@ -308,6 +386,69 @@
 
     <div id="products-grid"><div class="loading">Loading products...</div></div>
   </div>
+
+  <!-- PROMO TAB -->
+  <div id="tab-promo" class="tab-content">
+    <div class="product-form">
+      <h2>Create Promo Code</h2>
+      <div class="form-grid">
+        <div>
+          <label class="pf-label">Code</label>
+          <input class="pf-input" id="promo-code" type="text" placeholder="e.g. FESTIVAL10"/>
+        </div>
+        <div>
+          <label class="pf-label">Type</label>
+          <select class="pf-input" id="promo-type">
+            <option value="percentage">Percentage (%)</option>
+            <option value="flat">Flat Amount (₹)</option>
+          </select>
+        </div>
+        <div>
+          <label class="pf-label">Value</label>
+          <input class="pf-input" id="promo-value" type="number" placeholder="e.g. 10"/>
+        </div>
+        <div>
+          <label class="pf-label">Min Purchase (₹)</label>
+          <input class="pf-input" id="promo-min" type="number" value="0"/>
+        </div>
+        <div>
+          <label class="pf-label">Expiry Date</label>
+          <input class="pf-input" id="promo-expiry" type="date"/>
+        </div>
+        <div>
+          <label class="pf-label">Usage Limit (0 for unlimited)</label>
+          <input class="pf-input" id="promo-limit" type="number" value="0"/>
+        </div>
+      </div>
+      <button class="btn-save" onclick="savePromo()">CREATE CODE</button>
+    </div>
+    <div id="promo-list"></div>
+  </div>
+
+  <!-- SETTINGS TAB -->
+  <div id="tab-settings" class="tab-content">
+    <div class="product-form">
+      <h2>General Settings</h2>
+      <div class="form-grid">
+        <div class="full">
+          <label class="pf-label">Announcement Bar Text</label>
+          <input class="pf-input" id="setting-announcement" type="text" placeholder="e.g. Free shipping on orders over ₹2999!"/>
+        </div>
+        <div class="full">
+          <label class="pf-label">Hero Banner Image URL</label>
+          <input class="pf-input" id="setting-hero-img" type="text" placeholder="https://..."/>
+        </div>
+        <div>
+          <label class="pf-label">Sale Mode</label>
+          <select class="pf-input" id="setting-sale-mode">
+            <option value="false">Off</option>
+            <option value="true">On</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-save" onclick="saveSettings()">SAVE ALL SETTINGS</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -359,15 +500,105 @@ function showApp(email) {
   document.getElementById('app').style.display = 'block';
   document.getElementById('owner-email-display').textContent = email;
   loadStats();
-  loadOrders();
+  loadDashboard();
+}
+
+let categories = [];
+async function loadCategories() {
+  try {
+    categories = await apiFetch('/api/products/categories');
+    const select = document.getElementById('p-category');
+    if (select) {
+      const val = select.value;
+      select.innerHTML = '<option value="">Select category</option>' + 
+        categories.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+      select.value = val;
+    }
+  } catch (e) { console.error('Failed to load categories', e); }
+}
+
+async function addNewCategoryPrompt() {
+  const name = prompt("Enter new category name:");
+  if (!name) return;
+  try {
+    const res = await apiFetch('/api/products/categories', 'POST', { name });
+    alert("Category created!");
+    await loadCategories();
+    document.getElementById('p-category').value = res.id;
+  } catch (e) { alert("Failed: " + e.message); }
 }
 
 // ── Tabs ─────────────────────────────────────────────
 function switchTab(tab) {
-  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', ['orders','products'][i] === tab));
+  document.querySelectorAll('.tab').forEach((t) => {
+    const label = t.textContent.toLowerCase();
+    t.classList.toggle('active', label.includes(tab));
+  });
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
+  if (tab === 'dashboard') loadDashboard();
+  if (tab === 'orders') loadOrders();
   if (tab === 'products') loadProducts();
+  if (tab === 'promo') loadPromo();
+  if (tab === 'settings') loadSettings();
+}
+
+async function loadDashboard() {
+  try {
+    const data = await apiFetch('/api/orders/reports');
+    renderRevenueChart(data.dailyRevenue);
+    renderCategorySales(data.categorySales);
+    renderTopProducts(data.topProducts);
+  } catch (e) { console.error('Failed to load dashboard', e); }
+}
+
+function renderRevenueChart(days) {
+  const chart = document.getElementById('report-revenue-chart');
+  if (!days.length) { chart.innerHTML = '<p style="color:#888;font-size:12px">No data yet</p>'; return; }
+  
+  const max = Math.max(...days.map(d => d.revenue), 1);
+  chart.innerHTML = days.map(d => {
+    const height = (d.revenue / max) * 100;
+    const date = new Date(d.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+    return `
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%">
+        <div style="width:100%;height:${height}%;background:var(--maroon);border-radius:2px 2px 0 0;position:relative" title="₹${(d.revenue/100).toLocaleString('en-IN')} on ${date}">
+        </div>
+        <div style="font-size:8px;color:#888;transform:rotate(-45deg);margin-top:10px;white-space:nowrap">${date}</div>
+      </div>`;
+  }).join('');
+}
+
+function renderCategorySales(cats) {
+  const list = document.getElementById('report-category-list');
+  if (!cats.length) { list.innerHTML = '<p style="color:#888;font-size:12px">No data yet</p>'; return; }
+  
+  const total = cats.reduce((sum, c) => sum + c.revenue, 0);
+  list.innerHTML = cats.map(c => {
+    const pct = Math.round((c.revenue / total) * 100);
+    return `
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600">
+          <span>${esc(c.category)}</span>
+          <span>₹${(c.revenue/100).toLocaleString('en-IN')} (${pct}%)</span>
+        </div>
+        <div style="width:100%;height:6px;background:#f1f5f9;border-radius:3px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;background:var(--maroon)"></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderTopProducts(products) {
+  const grid = document.getElementById('report-top-products');
+  if (!products.length) { grid.innerHTML = '<p style="color:#888;font-size:12px">No data yet</p>'; return; }
+  
+  grid.innerHTML = products.map(p => `
+    <div style="background:#f8fafc;padding:12px;border-radius:6px;border:1px solid #e2e8f0">
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div>
+      <div style="font-size:11px;color:#64748b">${p.sold} units sold</div>
+    </div>
+  `).join('');
 }
 
 // ── Stats ─────────────────────────────────────────────
@@ -377,14 +608,22 @@ async function loadStats() {
     document.getElementById('stat-today-orders').textContent = s.today_orders;
     document.getElementById('stat-today-revenue').textContent = s.today_revenue_formatted;
     document.getElementById('stat-pending').textContent = s.pending_shipment;
+    document.getElementById('stat-pending-proc').textContent = s.pending_processing;
+    document.getElementById('stat-low-stock').textContent = s.low_stock_count;
     document.getElementById('stat-total').textContent = s.total_orders;
   } catch {}
 }
 
 // ── Orders ────────────────────────────────────────────
 async function loadOrders() {
+  const status = document.getElementById('filter-status').value;
+  const q = document.getElementById('order-search').value.trim();
+  let path = '/api/orders?limit=100';
+  if (status) path += `&status=${status}`;
+  if (q) path += `&q=${encodeURIComponent(q)}`;
+
   try {
-    const data = await apiFetch('/api/orders');
+    const data = await apiFetch(path);
     allOrders = data.orders || [];
     renderOrders();
   } catch {
@@ -392,23 +631,27 @@ async function loadOrders() {
   }
 }
 
-function filterOrders(filter, btn) {
-  currentFilter = filter;
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderOrders();
+function exportOrdersCSV() {
+  const url = `${API}/api/orders/export/csv?token=${token}`;
+  window.location.href = url;
 }
 
 function renderOrders() {
   const list = document.getElementById('orders-list');
-  let orders = currentFilter === 'all' ? allOrders : allOrders.filter(o => o.status === currentFilter);
-  if (!orders.length) { list.innerHTML = '<div class="empty-state">No orders found.</div>'; return; }
-  list.innerHTML = orders.map(orderCard).join('');
+  if (!allOrders.length) { list.innerHTML = '<div class="empty-state">No orders found.</div>'; return; }
+  list.innerHTML = allOrders.map(orderCard).join('');
 }
 
 function orderCard(o) {
   const statusClass = 'status-' + esc(o.status);
-  const statusLabel = {paid:'Ready to Ship',shipped:'Shipped',pending_verification:'UPI — Verify Payment'}[o.status] || o.status;
+  const statusLabel = {
+    paid: 'Paid (Ready)', 
+    shipped: 'Shipped', 
+    pending: 'COD Pending',
+    pending_verification: 'UPI Pending',
+    delivered: '✅ Delivered',
+    cancelled: '❌ Cancelled'
+  }[o.status] || o.status;
   const itemsHtml = o.items.map(it => `
     <div class="item-row">
       ${it.image ? `<img class="item-img" src="${esc(it.image)}" alt="${esc(it.name)}" onerror="this.style.display='none'"/>` : `<div class="item-img-placeholder">🛍️</div>`}
@@ -442,30 +685,76 @@ function orderCard(o) {
     </div>
     <div class="order-footer">
       <div class="order-total">${esc(o.total_formatted)} <span style="font-size:12px;color:#888;font-weight:400">(Shipping: ${esc(o.shipping_cost_formatted)})</span></div>
-      ${footerBtn}
+      <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <button onclick="window.open('/api/orders/${o.id}/invoice?token='+token)" style="background:none;border:1px solid #ddd;padding:4px 8px;font-size:11px;border-radius:4px;cursor:pointer">📄 Invoice</button>
+          <button onclick="openHistoryModal('${o.id}')" style="background:none;border:none;color:var(--maroon);font-size:11px;font-weight:700;text-decoration:underline;cursor:pointer">🕰️ History</button>
+        </div>
+        ${o.status === 'shipped' 
+          ? `<div style="text-align:right">
+               <div style="display:flex;gap:8px">
+                 <button class="btn-ship" style="background:#16a34a;color:#fff" onclick="updateOrderStatus('${o.id}', 'delivered')">Mark Delivered</button>
+                 <button class="btn-delete" style="width:auto;padding:0 12px" onclick="confirmCancel('${o.id}')">Cancel</button>
+               </div>
+               <div style="font-size:11px;color:#555;margin-top:8px">🚚 ${esc(o.courier_name)}: ${esc(o.tracking_number)}</div>
+             </div>`
+          : o.status === 'delivered'
+            ? `<span style="color:#16a34a;font-weight:700">✅ DELIVERED</span>`
+            : o.status === 'cancelled'
+              ? `<span style="color:#dc2626;font-weight:700">❌ CANCELLED</span>`
+              : `<div style="display:flex;gap:8px">
+                   <input type="text" id="courier-${o.id}" placeholder="Courier" style="width:100px;height:32px;font-size:12px;padding:0 8px;border:1px solid #ddd;border-radius:4px"/>
+                   <input type="text" id="tracking-${o.id}" placeholder="Tracking ID" style="width:120px;height:32px;font-size:12px;padding:0 8px;border:1px solid #ddd;border-radius:4px"/>
+                   <button class="btn-ship" onclick="shipOrder('${esc(String(o.id))}',this)">SHIP</button>
+                   <button class="btn-delete" style="width:auto;padding:0 12px" onclick="confirmCancel('${o.id}')">Cancel</button>
+                 </div>`
+        }
+      </div>
     </div>
   </div>`;
 }
 
-async function markShipped(id, btn) {
-  btn.disabled = true; btn.textContent = 'MARKING...';
+async function shipOrder(id, btn) {
+  const courier = document.getElementById('courier-' + id).value.trim();
+  const tracking = document.getElementById('tracking-' + id).value.trim();
+  if(!courier || !tracking) return alert('Enter courier and tracking ID');
+  updateOrderStatus(id, 'shipped', { courier_name: courier, tracking_number: tracking });
+}
+
+function confirmCancel(id) {
+  if (confirm("Are you sure you want to CANCEL this order? Items will be restocked automatically.")) {
+    updateOrderStatus(id, 'cancelled');
+  }
+}
+
+async function updateOrderStatus(id, status, extra = {}) {
   try {
-    const data = await apiFetch(`/api/orders/${id}/ship`, 'PATCH');
+    const data = await apiFetch(`/api/orders/${id}`, 'PATCH', { status, ...extra });
     const card = document.getElementById('order-' + id);
-    const updated = data.order;
-    card.outerHTML = orderCard(updated);
+    if (card) card.outerHTML = orderCard(data.order);
     loadStats();
   } catch(e) {
-    btn.disabled = false; btn.textContent = 'MARK AS SHIPPED';
-    alert('Failed to mark as shipped. Please try again.');
+    alert('Failed to update order: ' + e.message);
   }
 }
 
 // ── Products ──────────────────────────────────────────
+let showLowStockOnly = false;
+function toggleLowStockFilter() {
+  showLowStockOnly = !showLowStockOnly;
+  const btn = document.getElementById('btn-low-stock');
+  btn.classList.toggle('active', showLowStockOnly);
+  loadProducts();
+}
+
 async function loadProducts() {
   try {
     const data = await apiFetch('/api/products');
-    renderProducts(data.products || []);
+    let products = data.products || [];
+    if (showLowStockOnly) {
+      products = products.filter(p => p.totalStock < 5);
+    }
+    renderProducts(products);
   } catch {
     document.getElementById('products-grid').innerHTML = '<div class="empty-state">Failed to load products.</div>';
   }
@@ -507,10 +796,11 @@ function toggleStock(cb) {
 async function saveProduct() {
   const name = document.getElementById('p-name').value.trim();
   const price = document.getElementById('p-price').value.trim();
+  const compareAt = document.getElementById('p-compare-at').value.trim();
   const category = document.getElementById('p-category').value;
   const collection = document.getElementById('p-collection').value.trim();
   const description = document.getElementById('p-description').value.trim();
-  const imageFile = document.getElementById('product-image').files[0];
+  const imageFiles = document.getElementById('product-images').files;
 
   if (!name || !price || !category) { alert('Name, price and category are required.'); return; }
 
@@ -526,10 +816,33 @@ async function saveProduct() {
   const fd = new FormData();
   fd.append('name', name);
   fd.append('price', price);
-  fd.append('category', category);
+  if (compareAt) fd.append('compare_at_price', compareAt);
+  const category = document.getElementById('p-category').value;
+  const collection = document.getElementById('p-collection').value.trim();
+  const description = document.getElementById('p-description').value.trim();
+  const metaTitle = document.getElementById('p-meta-title').value.trim();
+  const metaDescription = document.getElementById('p-meta-description').value.trim();
+  const slug = document.getElementById('p-slug').value.trim();
+
+  if (!name || !price || !category) return alert('Name, price and category are required');
+
+  const checkedSizes = document.querySelectorAll('input[name="sizes[]"]:checked');
+  if (!checkedSizes.length) return alert('Select at least one size');
+
+  const fd = new FormData();
+  fd.append('name', name);
+  fd.append('price', price);
+  if (compareAt) fd.append('compare_at_price', compareAt);
+  fd.append('category', category); // Now sending category_id
   if (collection) fd.append('collection', collection);
   if (description) fd.append('description', description);
-  if (imageFile) fd.append('image', imageFile);
+  if (metaTitle) fd.append('meta_title', metaTitle);
+  if (metaDescription) fd.append('meta_description', metaDescription);
+  if (slug) fd.append('slug', slug);
+  
+  for (let i = 0; i < imageFiles.length; i++) {
+    fd.append('images', imageFiles[i]);
+  }
 
   checkedSizes.forEach(cb => {
     fd.append('sizes[]', cb.value);
@@ -542,18 +855,19 @@ async function saveProduct() {
     const data = await r.json();
     if (!r.ok) throw new Error(data.error);
     alert('✅ Product saved!');
-    document.getElementById('p-name').value = '';
-    document.getElementById('p-price').value = '';
-    document.getElementById('p-category').value = '';
-    document.getElementById('p-collection').value = '';
-    document.getElementById('p-description').value = '';
-    document.getElementById('product-image').value = '';
-    document.getElementById('img-preview').style.display = 'none';
+    // Clear fields
+    ['p-name', 'p-price', 'p-compare-at', 'p-category', 'p-collection', 'p-description', 'p-meta-title', 'p-meta-description', 'p-slug'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    document.getElementById('product-images').value = '';
+    document.getElementById('images-preview-container').innerHTML = '';
     document.getElementById('drop-text').style.display = 'block';
-    // Reset size checkboxes
+    
     document.querySelectorAll('input[name="sizes[]"]').forEach(cb => {
       cb.checked = false;
-      toggleStock(cb);
+      const ctrl = document.getElementById('new-stock-ctrl-' + cb.value);
+      if (ctrl) ctrl.style.display = 'none';
     });
     loadProducts();
     loadStats();
@@ -569,27 +883,37 @@ async function deleteProduct(id, name) {
 }
 
 // ── Image preview ─────────────────────────────────────
-function previewImage(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    document.getElementById('img-preview').src = e.target.result;
-    document.getElementById('img-preview').style.display = 'block';
-    document.getElementById('drop-text').style.display = 'none';
-  };
-  reader.readAsDataURL(file);
+function previewImages(input) {
+  const container = document.getElementById('images-preview-container');
+  container.innerHTML = '';
+  const files = Array.from(input.files);
+  if (files.length === 0) {
+    document.getElementById('drop-text').style.display = 'block';
+    return;
+  }
+  document.getElementById('drop-text').style.display = 'none';
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = document.createElement('img');
+      img.src = e.target.result;
+      img.className = 'preview-img';
+      img.style.margin = '4px';
+      container.appendChild(img);
+    };
+    reader.readAsDataURL(file);
+  });
 }
 function handleDrop(e) {
   e.preventDefault();
   document.getElementById('drop-zone').classList.remove('dragover');
-  const file = e.dataTransfer.files[0];
-  if (!file || !file.type.startsWith('image/')) return;
+  const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+  if (!files.length) return;
   const dt = new DataTransfer();
-  dt.items.add(file);
-  const input = document.getElementById('product-image');
+  files.forEach(f => dt.items.add(f));
+  const input = document.getElementById('product-images');
   input.files = dt.files;
-  previewImage(input);
+  previewImages(input);
 }
 
 // ── API helper ────────────────────────────────────────
@@ -602,6 +926,83 @@ async function apiFetch(path, method = 'GET', body = null) {
   return data;
 }
 function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── Promo Codes ──────────────────────────────────────
+async function loadPromo() {
+  const list = document.getElementById('promo-list');
+  list.innerHTML = '<div class="loading">Loading promo codes...</div>';
+  try {
+    const codes = await apiFetch('/api/promo');
+    if (!codes.length) { list.innerHTML = '<div class="empty-state">No promo codes yet.</div>'; return; }
+    list.innerHTML = codes.map(p => `
+      <div class="order-card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-weight:700;color:var(--maroon);font-size:16px">${esc(p.code)}</div>
+            <div style="font-size:12px;color:#888">${p.type==='percentage' ? p.value+'%' : '₹'+p.value} off · Min: ₹${p.min_purchase_paise/100}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:11px;text-transform:uppercase;color:#888">${p.times_used} uses</div>
+            <button class="btn-delete" onclick="deletePromo(${p.id})" style="margin-top:8px">DELETE</button>
+          </div>
+        </div>
+      </div>`).join('');
+  } catch { list.innerHTML = 'Error loading promo codes.'; }
+}
+
+async function savePromo() {
+  const code = document.getElementById('promo-code').value.trim();
+  const type = document.getElementById('promo-type').value;
+  const value = document.getElementById('promo-value').value;
+  const min = document.getElementById('promo-min').value;
+  const expiry = document.getElementById('promo-expiry').value;
+  const limit = document.getElementById('promo-limit').value;
+
+  if (!code || !value) return alert('Code and Value are required');
+  try {
+    await apiFetch('/api/promo', 'POST', { 
+      code, type, value: parseFloat(value), 
+      min_purchase_paise: Math.round(parseFloat(min||0)*100), 
+      expiry_date: expiry, 
+      usage_limit: parseInt(limit||0) 
+    });
+    alert('Code created!');
+    loadPromo();
+  } catch(e) { alert(e.message); }
+}
+
+async function deletePromo(id) {
+  if (!confirm('Delete promo code?')) return;
+  try {
+    await apiFetch('/api/promo/'+id, 'DELETE');
+    loadPromo();
+  } catch(e) { alert(e.message); }
+}
+
+// ── Settings ─────────────────────────────────────────
+async function loadSettings() {
+  try {
+    const s = await apiFetch('/api/settings');
+    document.getElementById('setting-announcement').value = s.announcement_text || '';
+    document.getElementById('setting-hero-img').value = s.hero_banner_image || '';
+    document.getElementById('setting-sale-mode').value = s.is_sale_mode || 'false';
+  } catch {}
+}
+
+async function saveSettings() {
+  const settings = {
+    announcement_text: document.getElementById('setting-announcement').value.trim(),
+    hero_banner_image: document.getElementById('setting-hero-img').value.trim(),
+    is_sale_mode: document.getElementById('setting-sale-mode').value
+  };
+  
+  try {
+    for (const [key, value] of Object.entries(settings)) {
+      await apiFetch('/api/settings', 'POST', { key, value });
+    }
+    alert('Settings saved!');
+  } catch(e) { alert(e.message); }
+}
 
 // ── Edit Modal ────────────────────────────────────────
 let _escKeyHandler = null;
@@ -696,26 +1097,56 @@ async function openEditModal(productId) {
     </div>
     <div class="field" style="margin-bottom:16px">
       <label class="pf-label" for="em-name">Product Name</label>
-      <input class="pf-input" type="text" id="em-name" value="${esc(p.name)}" style="width:100%;height:44px;border:1px solid #ddd;padding:0 12px;font-size:14px;border-radius:4px;outline:none"/>
+      <input class="pf-input" type="text" id="em-name" value="${esc(p.name)}" style="width:100%"/>
     </div>
-    <div class="field" style="margin-bottom:16px">
-      <label class="pf-label" for="em-price">Price (₹ INR)</label>
-      <input class="pf-input" type="number" id="em-price" min="1" value="${esc(String(p.price))}" style="width:100%;height:44px;border:1px solid #ddd;padding:0 12px;font-size:14px;border-radius:4px;outline:none"/>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div>
+        <label class="pf-label" for="em-price">Price (₹ INR)</label>
+        <input class="pf-input" type="number" id="em-price" min="1" value="${esc(String(p.price))}"/>
+      </div>
+      <div>
+        <label class="pf-label" for="em-compare-at">Compare-at Price</label>
+        <input class="pf-input" type="number" id="em-compare-at" min="1" value="${esc(String(p.compare_at_price || ''))}"/>
+      </div>
+    </div>
+    <div style="margin-bottom:16px">
+      <label class="pf-label">Category</label>
+      <select class="pf-input" id="em-category">
+        <option value="">Select category</option>
+        ${categories.map(c => `<option value="${c.id}" ${p.category_id === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
+      </select>
     </div>
     <div class="field" style="margin-bottom:16px">
       <label class="pf-label" for="em-description">Description (optional)</label>
-      <textarea class="pf-input" id="em-description" rows="4" style="width:100%;border:1px solid #ddd;padding:8px 12px;font-size:14px;border-radius:4px;outline:none;resize:vertical">${esc(p.description || '')}</textarea>
+      <textarea class="pf-input" id="em-description" rows="3">${esc(p.description || '')}</textarea>
     </div>
+    
+    <!-- SEO SECTION -->
+    <div style="background:#f1f5f9;padding:12px;border-radius:6px;margin-bottom:16px;border:1px solid #cbd5e1">
+      <div style="font-weight:700;font-size:11px;margin-bottom:8px;color:#475569">SEARCH ENGINE OPTIMIZATION</div>
+      <div class="field" style="margin-bottom:8px">
+        <label style="font-size:10px;font-weight:700;display:block;margin-bottom:4px">Meta Title</label>
+        <input class="pf-input" id="em-meta-title" value="${esc(p.meta_title || '')}" style="height:32px;font-size:12px"/>
+      </div>
+      <div class="field" style="margin-bottom:8px">
+        <label style="font-size:10px;font-weight:700;display:block;margin-bottom:4px">URL Slug</label>
+        <input class="pf-input" id="em-slug" value="${esc(p.slug || '')}" style="height:32px;font-size:12px"/>
+      </div>
+      <div class="field">
+        <label style="font-size:10px;font-weight:700;display:block;margin-bottom:4px">Meta Description</label>
+        <textarea class="pf-input" id="em-meta-description" rows="2" style="font-size:12px">${esc(p.meta_description || '')}</textarea>
+      </div>
+    </div>
+
     <div class="field" style="margin-bottom:16px">
       <label class="pf-label">Sizes &amp; Stock *</label>
       <div id="em-sizes-container" style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
         ${pillsHtml}
       </div>
-      <p id="em-sizes-error" style="color:var(--error);font-size:12px;margin-top:8px;display:none">Select at least one size.</p>
     </div>
     <div style="display:flex;gap:16px;margin-top:24px;justify-content:flex-end">
-      <button onclick="closeEditModal()" style="background:none;border:1px solid #ddd;color:var(--charcoal);padding:14px 32px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;min-height:44px">DISCARD CHANGES</button>
-      <button class="btn-save" onclick="saveEditModal('${esc(String(p.id))}')" style="min-height:44px;padding:14px 32px">SAVE CHANGES</button>
+      <button onclick="closeEditModal()" style="background:none;border:1px solid #ddd;color:var(--charcoal);padding:10px 20px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:700;text-transform:uppercase">CANCEL</button>
+      <button class="btn-save" onclick="saveEditModal('${esc(String(p.id))}')" style="padding:10px 24px">SAVE PRODUCT</button>
     </div>`;
 
   // Replace loading placeholder with full form
@@ -726,6 +1157,7 @@ async function openEditModal(productId) {
 async function saveEditModal(productId) {
   const name = (document.getElementById('em-name').value || '').trim();
   const price = (document.getElementById('em-price').value || '').trim();
+  const compareAt = (document.getElementById('em-compare-at').value || '').trim();
   const description = (document.getElementById('em-description').value || '').trim();
 
   if (!name || !price) { alert('Name and price are required.'); return; }
@@ -746,7 +1178,12 @@ async function saveEditModal(productId) {
 
   try {
     await apiFetch('/api/products/' + productId, 'PATCH', {
-      name, price: parseFloat(price), description, sizes, stock
+      name, 
+      price: parseFloat(price), 
+      compare_at_price: compareAt ? parseFloat(compareAt) : null,
+      description, 
+      sizes, 
+      stock
     });
     closeEditModal();
     loadProducts();
@@ -754,6 +1191,249 @@ async function saveEditModal(productId) {
     alert('Failed to save: ' + e.message);
     // Modal stays open on error (IC-04 step 7)
   }
+}
+// ── Manual Order Modal ────────────────────────────────
+async function openManualOrderModal() {
+  const overlayHtml = `<div id="manual-order-overlay"
+    style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center"
+    onclick="if(event.target===this)closeManualOrderModal()">
+    <div class="em-dialog" style="background:#fff;border-radius:8px;padding:32px;width:min(640px,95vw);max-height:90vh;overflow-y:auto;position:relative;border:1px solid var(--border-subtle);box-shadow:0 20px 60px rgba(0,0,0,.2)" onclick="event.stopPropagation()">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+        <h2 style="font-size:16px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--maroon)">CREATE MANUAL ORDER</h2>
+        <button onclick="closeManualOrderModal()" style="background:none;border:none;font-size:24px;color:#888;cursor:pointer">×</button>
+      </div>
+      
+      <div class="form-grid">
+        <div class="full">
+          <label class="pf-label">Customer Name</label>
+          <input class="pf-input" id="mo-customer-name" type="text" placeholder="John Doe"/>
+        </div>
+        <div>
+          <label class="pf-label">Phone</label>
+          <input class="pf-input" id="mo-customer-phone" type="text" placeholder="9876543210"/>
+        </div>
+        <div>
+          <label class="pf-label">Email (optional)</label>
+          <input class="pf-input" id="mo-customer-email" type="email" placeholder="john@example.com"/>
+        </div>
+        <div class="full">
+          <label class="pf-label">Shipping Address</label>
+          <textarea class="pf-input" id="mo-address" rows="2" placeholder="House No, Street, City, State, PIN"></textarea>
+        </div>
+      </div>
+
+      <div style="margin-top:24px;border-top:1px solid #eee;padding-top:20px">
+        <h3 style="font-size:12px;font-weight:700;margin-bottom:12px">SELECT PRODUCTS</h3>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <select id="mo-product-select" class="pf-input" onchange="loadMoVariants(this.value)" style="flex:1">
+            <option value="">Select a product...</option>
+          </select>
+          <select id="mo-variant-select" class="pf-input" style="width:120px">
+            <option value="">Size</option>
+          </select>
+          <button onclick="addMoItem()" style="background:var(--maroon);color:var(--gold);border:none;padding:0 16px;border-radius:4px;cursor:pointer;font-weight:700">+</button>
+        </div>
+        <div id="mo-items-list" style="background:#f9f9f9;padding:12px;border-radius:4px;font-size:13px">
+          <p style="color:#888;text-align:center">No items added yet</p>
+        </div>
+      </div>
+
+      <div style="margin-top:24px;display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:18px;font-weight:700;color:var(--maroon)">Total: ₹<span id="mo-total">0</span></div>
+        <button class="btn-save" onclick="submitManualOrder()" style="margin-top:0">CREATE ORDER</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', overlayHtml);
+  
+  // Load products
+  const data = await apiFetch('/api/products');
+  const sel = document.getElementById('mo-product-select');
+  data.products.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = `${p.name} (₹${p.price})`;
+    opt.dataset.price = p.price;
+    opt.dataset.image = p.image_url;
+    opt.dataset.name = p.name;
+    sel.appendChild(opt);
+  });
+}
+
+let moItems = [];
+async function loadMoVariants(pid) {
+  const sel = document.getElementById('mo-variant-select');
+  sel.innerHTML = '<option value="">Size</option>';
+  if(!pid) return;
+  const data = await apiFetch('/api/products/' + pid);
+  data.product.variants.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.id;
+    opt.textContent = `${v.size} (${v.stock} in stock)`;
+    opt.dataset.size = v.size;
+    sel.appendChild(opt);
+  });
+}
+
+function addMoItem() {
+  const pSel = document.getElementById('mo-product-select');
+  const vSel = document.getElementById('mo-variant-select');
+  if(!pSel.value || !vSel.value) return;
+  
+  const pOpt = pSel.options[pSel.selectedIndex];
+  const vOpt = vSel.options[vSel.selectedIndex];
+  
+  moItems.push({
+    product_id: pSel.value,
+    variant_id: vSel.value,
+    name: pOpt.dataset.name,
+    size: vOpt.dataset.size,
+    price: parseFloat(pOpt.dataset.price),
+    image: pOpt.dataset.image,
+    quantity: 1
+  });
+  renderMoItems();
+}
+
+function renderMoItems() {
+  const list = document.getElementById('mo-items-list');
+  if(!moItems.length) { list.innerHTML = '<p style="color:#888;text-align:center">No items added yet</p>'; return; }
+  list.innerHTML = moItems.map((it, i) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <span>${esc(it.name)} (${esc(it.size)}) x ${it.quantity}</span>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span>₹${it.price * it.quantity}</span>
+        <button onclick="moItems.splice(${i},1);renderMoItems()" style="background:none;border:none;color:#c00;cursor:pointer">×</button>
+      </div>
+    </div>
+  `).join('');
+  const total = moItems.reduce((sum, it) => sum + (it.price * it.quantity), 0);
+  document.getElementById('mo-total').textContent = total.toLocaleString('en-IN');
+}
+
+async function submitManualOrder() {
+  const name = document.getElementById('mo-customer-name').value.trim();
+  const phone = document.getElementById('mo-customer-phone').value.trim();
+  const email = document.getElementById('mo-customer-email').value.trim();
+  const address = document.getElementById('mo-address').value.trim();
+  
+  if(!name || !phone || !address || !moItems.length) return alert('Fill all fields and add items');
+  
+  const total = moItems.reduce((sum, it) => sum + (it.price * it.quantity), 0);
+  const order_data = {
+    customer_name: name,
+    customer_phone: phone,
+    customer_email: email,
+    payment_method: 'manual',
+    address: { full: address, line1: address, city: '', state: '', pin_code: '' },
+    items: moItems,
+    subtotal: total,
+    total: total,
+    shipping_cost: 0,
+    shipping_method: 'free'
+  };
+  
+  try {
+    await apiFetch('/api/orders', 'POST', { order_data });
+    alert('✅ Manual order created!');
+    closeManualOrderModal();
+    loadOrders();
+    loadStats();
+  } catch(e) { alert(e.message); }
+}
+
+function closeManualOrderModal() {
+  document.getElementById('manual-order-overlay').remove();
+  moItems = [];
+}
+
+// ── Order History ────────────────────────────────────
+async function openHistoryModal(orderId) {
+  try {
+    const data = await apiFetch(`/api/orders/${orderId}/history`);
+    const overlayHtml = `
+      <div id="history-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:2000;padding:20px">
+        <div style="background:#fff;width:100%;max-width:500px;border-radius:12px;padding:32px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+            <h2 style="font-size:16px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--maroon)">Order History — #${orderId}</h2>
+            <button onclick="document.getElementById('history-overlay').remove()" style="background:none;border:none;font-size:24px;color:#888;cursor:pointer">×</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:16px">
+            ${data.history.map(h => `
+              <div style="display:flex;gap:12px;border-left:2px solid #e2e8f0;padding-left:16px;position:relative">
+                <div style="position:absolute;left:-5px;top:0;width:8px;height:8px;border-radius:50%;background:var(--maroon)"></div>
+                <div>
+                  <div style="font-size:11px;font-weight:700;color:var(--maroon);text-transform:uppercase;margin-bottom:4px">${h.status.replace('_', ' ')}</div>
+                  <div style="font-size:13px;color:#1a1a1a">${esc(h.comment || 'Status updated')}</div>
+                  <div style="font-size:11px;color:#888;margin-top:4px">${new Date(h.created_at).toLocaleString('en-IN')}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>`;
+    document.body.insertAdjacentHTML('beforeend', overlayHtml);
+  } catch (e) { alert('Failed to load history'); }
+}
+
+// ── Bulk Update ──────────────────────────────────────
+function openBulkUpdateModal() {
+  const overlayHtml = `
+    <div id="bulk-update-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:2000;padding:20px">
+      <div style="background:#fff;width:100%;max-width:450px;border-radius:12px;padding:32px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+          <h2 style="font-size:16px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--maroon)">⚖️ Bulk Price Update</h2>
+          <button onclick="document.getElementById('bulk-update-overlay').remove()" style="background:none;border:none;font-size:24px;color:#888;cursor:pointer">×</button>
+        </div>
+        <div style="background:#fff9f0;border:1px solid #ffedd5;padding:12px;border-radius:6px;margin-bottom:20px;font-size:12px;color:#9a3412">
+          <strong>Note:</strong> This will affect ALL products in the selected category.
+        </div>
+        <div class="field">
+          <label>Category</label>
+          <select id="bulk-category" class="pf-input">
+            <option value="all">All Products</option>
+            ${categories.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>Adjustment Type</label>
+          <select id="bulk-type" class="pf-input">
+            <option value="percentage">Percentage (%)</option>
+            <option value="fixed">Fixed Amount (₹)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Value (+ increase, - decrease)</label>
+          <input type="number" id="bulk-value" class="pf-input" placeholder="e.g. -10 for 10% discount"/>
+        </div>
+        <div style="margin-top:24px;display:flex;gap:12px">
+          <button onclick="document.getElementById('bulk-update-overlay').remove()" class="btn-primary" style="flex:1;background:#fff;color:var(--charcoal);border:1px solid #ddd">Cancel</button>
+          <button onclick="submitBulkUpdate()" class="btn-primary" style="flex:1">Apply Changes</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', overlayHtml);
+}
+
+async function submitBulkUpdate() {
+  const catId = document.getElementById('bulk-category').value;
+  const type = document.getElementById('bulk-type').value;
+  const value = parseFloat(document.getElementById('bulk-value').value);
+  
+  if (isNaN(value)) return alert('Enter a valid value');
+  if (!confirm(`Are you sure you want to apply a ${value}${type === 'percentage' ? '%' : ' ₹'} change to products?`)) return;
+  
+  try {
+    await apiFetch('/api/products/bulk-update', 'POST', {
+      category_id: catId === 'all' ? null : parseInt(catId),
+      type,
+      value
+    });
+    alert('✅ Bulk update successful!');
+    document.getElementById('bulk-update-overlay').remove();
+    loadProducts();
+    loadStats();
+  } catch (e) { alert(e.message); }
 }
 </script>
 </body>

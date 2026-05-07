@@ -1,10 +1,22 @@
-export default function AnnouncementBar() {
-  const items = [
-    "✦  FREE SHIPPING ON ALL ORDERS",
-    "✦  HANDCRAFTED IN HYDERABAD",
-  ];
+import { useEffect, useState } from "react";
 
-  const repeated = [...items, ...items, ...items, ...items, ...items, ...items];
+const BACKEND = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:9000";
+
+export default function AnnouncementBar() {
+  const [text, setText] = useState("✦ FREE SHIPPING ON ALL ORDERS");
+
+  useEffect(() => {
+    fetch(`${BACKEND}/api/settings`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.announcement_text) {
+          setText(`✦ ${data.announcement_text.toUpperCase()}`);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const repeated = Array(12).fill(text);
 
   return (
     <div
@@ -12,7 +24,7 @@ export default function AnnouncementBar() {
       style={{ height: "26px" }}
     >
       <div
-        className="animate-[marquee_30s_linear_infinite] flex"
+        className="animate-[marquee_40s_linear_infinite] flex"
         style={{ width: "max-content" }}
       >
         {repeated.map((item, i) => (

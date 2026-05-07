@@ -9,7 +9,9 @@ const cors = require("cors");
 const path = require("path");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
-const { initDb } = require("./db");
+const compression = require("compression");
+const pinoHttp = require("pino-http");
+const { initDb, db } = require("./db");
 const logger = require("./utils/logger");
 
 // ── Env validation ──────────────────────────────
@@ -24,7 +26,9 @@ if (missing.length > 0) {
 // ── App setup ───────────────────────────────────
 const app = express();
 
-// Security and Rate Limiting
+// Security, Logging and Performance
+app.use(pinoHttp({ logger }));
+app.use(compression());
 app.set("trust proxy", 1);
 app.use(helmet({
   contentSecurityPolicy: false,
@@ -90,6 +94,10 @@ app.use("/api/customers", authLimiter, require("./routes/customers"));
 app.use("/api/products", require("./routes/products"));
 app.use("/api/orders", apiLimiter, require("./routes/orders"));
 app.use("/api/payments", apiLimiter, require("./routes/payments").router);
+app.use("/api/promo", require("./routes/promo"));
+app.use("/api/settings", require("./routes/site-settings"));
+const { router: checkoutRouter, runRecoveryTask } = require("./routes/checkouts");
+app.use("/api/checkouts", checkoutRouter);
 
 // Health check
 app.get("/", (_req, res) => {
@@ -120,5 +128,24 @@ const PORT = parseInt(process.env.PORT || "9000", 10);
   │  Dashboard: http://localhost:${PORT}/dashboard        │
   └────────────────────────────────────────────────────┘
     `);
+    
+    // Start background recovery task (every 30 mins)
+    setInterval(runRecoveryTask, 30 * 60 * 1000);
+    // Initial run after 1 min
+    setTimeout(runRecoveryTask, 60 * 1000);
   });
 })();
+
+// ── Graceful Shutdown ───────────────────────────
+const shutdown = async (signal) => {
+  logger.info({ signal }, "Shutdown signal received");
+  // No explicit close for sql.js, but we can ensure process exits cleanly
+  process.exit(0);
+};
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("unhandledRejection", (err) => {
+  logger.fatal(err, "Unhandled rejection");
+  shutdown("unhandledRejection");
+});

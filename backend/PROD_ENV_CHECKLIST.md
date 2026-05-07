@@ -12,6 +12,10 @@ Ensure these variables are set in the Railway dashboard before deploying.
 | `STORE_CORS` | Allowed frontend origins | `https://poshakh.vercel.app` |
 | `DATABASE_PATH` | Path to persistent SQLite file | `/app/data/poshakh.db` |
 | `COOKIE_SECURE` | Enforce HTTPS for cookies | `true` |
+| `RAZORPAY_KEY_ID` | Razorpay Key ID | `rzp_live_...` |
+| `RAZORPAY_KEY_SECRET`| Razorpay Key Secret | [Secret] |
+| `RAZORPAY_WEBHOOK_SECRET` | Webhook verification secret | [Secret] |
+| `FAST2SMS_API_KEY` | SMS gateway key | [Key] |
 
 ## Infrastructure Notes
 - **Railway Volume:** Mount a volume at `/app/data`.

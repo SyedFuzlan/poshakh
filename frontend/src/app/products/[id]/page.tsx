@@ -8,7 +8,7 @@ export async function generateStaticParams() {
   try {
     const products = await getProducts();
     return products.map((product) => ({
-      id: product.id,
+      id: product.slug || product.id,
     }));
   } catch (error) {
     console.error("Error generating static params:", error);
@@ -26,16 +26,19 @@ export async function generateMetadata({
 
   if (!product) return {};
 
+  const title = product.meta_title || `${product.name} | Made by Zohra`;
+  const description = product.meta_description || product.description || `Exquisite ${product.name} from Made by Zohra. Handcrafted in Hyderabad.`;
+
   return {
-    title: product.name,
-    description: product.description || `Exquisite ${product.name} from Made by Zohra. Handcrafted in Hyderabad.`,
+    title,
+    description,
     openGraph: {
-      title: `${product.name} | Made by Zohra`,
-      description: product.description || `Exquisite ${product.name} from Made by Zohra.`,
+      title,
+      description,
       images: product.images,
     },
     alternates: {
-      canonical: `/products/${id}`,
+      canonical: `/products/${product.slug || product.id}`,
     },
   };
 }

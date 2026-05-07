@@ -13,23 +13,33 @@ const FALLBACK_IMAGES_BY_CATEGORY: Record<string, string[]> = {
 interface RawProduct {
   id: number | string;
   name: string;
+  slug?: string;
   price: number;
   formattedPrice: string;
   images?: string[];
-  category: string;
+  category_id: number;
+  category_name: string;
   description?: string;
+  meta_title?: string;
+  meta_description?: string;
   variants?: Product["variants"];
 }
 
 function mapProduct(p: RawProduct): Product {
+  const categoryName = p.category_name || "other";
   return {
     id:             String(p.id),
     name:           p.name,
+    slug:           p.slug || String(p.id),
     price:          p.price,
     formattedPrice: p.formattedPrice,
-    images:         p.images?.length ? p.images : (FALLBACK_IMAGES_BY_CATEGORY[p.category] ?? ["/images/products/saree1.png"]),
-    category:       p.category as Product["category"],
+    images:         p.images?.length ? p.images : (FALLBACK_IMAGES_BY_CATEGORY[categoryName.toLowerCase()] ?? ["/images/products/saree1.png"]),
+    category_id:    p.category_id,
+    category_name:  categoryName,
+    category:       categoryName.toLowerCase(), // Legacy support
     description:    p.description ?? "",
+    meta_title:     p.meta_title,
+    meta_description: p.meta_description,
     variants:       p.variants ?? [],
   };
 }
@@ -106,6 +116,16 @@ export async function getProductSiblings(product: Product): Promise<Product[]> {
     const base = getBaseName(product.name);
     
     return allInCat.filter(p => getBaseName(p.name) === base);
+  } catch {
+    return [];
+  }
+}
+
+export async function getCategories(): Promise<Category[]> {
+  try {
+    const res = await fetch(`${BACKEND}/api/products/categories`, { next: { revalidate: 3600 } });
+    if (!res.ok) return [];
+    return await res.json();
   } catch {
     return [];
   }

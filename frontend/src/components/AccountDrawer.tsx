@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/store";
 import { loginWithPassword, signupWithPassword } from "@/lib/auth";
+import { trackEvent, identifyUser } from "./PostHogProvider";
 
 type View = "login" | "signup";
 
@@ -104,6 +105,13 @@ export default function AccountDrawer() {
     setLoading(true);
     try {
       const c = await loginWithPassword(loginId, loginPw);
+      identifyUser(c.id, {
+        email: c.email,
+        phone: c.phone,
+        firstName: c.firstName,
+        lastName: c.lastName
+      });
+      trackEvent('user_logged_in', { method: 'password' });
       onSuccess(c);
     } catch (err) { setError(parseError(err)); }
     finally { setLoading(false); }
@@ -117,6 +125,13 @@ export default function AccountDrawer() {
     setLoading(true);
     try {
       const c = await signupWithPassword(sigFirst, sigLast, sigPhone, sigPw);
+      identifyUser(c.id, {
+        email: c.email,
+        phone: c.phone,
+        firstName: c.firstName,
+        lastName: c.lastName
+      });
+      trackEvent('user_signed_up', { method: 'password' });
       onSuccess(c);
     } catch (err) { setError(parseError(err)); }
     finally { setLoading(false); }

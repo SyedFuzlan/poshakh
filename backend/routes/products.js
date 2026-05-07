@@ -9,11 +9,38 @@ const express = require("express");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
-const db = require("../db").db;
+const { db } = require("../db");
 const requireOwner = require("../middleware/requireOwner");
 const logger = require("../utils/logger");
+const { z } = require("zod");
 
 const router = express.Router();
+
+// ── Category Routes ─────────────────────────────
+router.get("/categories", (req, res) => {
+  try {
+    const rows = db.prepare("SELECT * FROM categories ORDER BY position ASC, name ASC").all();
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch categories" });
+  }
+});
+
+router.post("/categories", requireOwner, (req, res) => {
+  try {
+    const { name, parent_id, position, description } = req.body;
+    if (!name) return res.status(400).json({ error: "Name is required" });
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    
+    const { lastInsertRowid } = db.prepare(
+      "INSERT INTO categories (name, slug, parent_id, position, description) VALUES (?, ?, ?, ?, ?)"
+    ).run(name, slug, parent_id || null, position || 0, description || null);
+    
+    res.json({ id: lastInsertRowid, name, slug });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to create category" });
+  }
+});
 
 // ── Image upload config ─────────────────────────
 const UPLOADS_DIR = path.join(__dirname, "..", "data", "uploads");
@@ -61,10 +88,15 @@ function formatProduct(row, variants = []) {
     price: priceRupees,
     formattedPrice: `₹${priceRupees.toLocaleString("en-IN")}`,
     price_paise: paise,
-    category: row.category,
+    category: row.category_name || row.category || "Uncategorized",
+    category_id: row.category_id,
+    compare_at_price_paise: row.compare_at_price_paise,
+    compare_at_price: row.compare_at_price_paise ? Math.round(row.compare_at_price_paise / 100) : null,
     collection: row.collection || "",
-    images: row.image_url ? [row.image_url] : [],
-    image_url: row.image_url || "",
+    images: row.images_json ? JSON.parse(row.images_json) : (row.image_url ? [row.image_url] : []),
+    slug: row.slug || "",
+    meta_title: row.meta_title || "",
+    meta_description: row.meta_description || "",
     description: row.description || "",
     totalStock,
     variants,
@@ -94,8 +126,9 @@ router.get("/", (req, res) => {
     }
 
     let sql = `
-      SELECT p.*, COALESCE(SUM(pv.stock), 0) as total_stock
+      SELECT p.*, c.name as category_name, COALESCE(SUM(pv.stock), 0) as total_stock
       FROM products p
+      LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN product_variants pv ON p.id = pv.product_id
     `;
     let params = [];
@@ -135,16 +168,17 @@ router.get("/", (req, res) => {
 router.get("/:id", (req, res) => {
   try {
     const rows = db.prepare(`
-      SELECT p.*,
+      SELECT p.*, c.name as category_name,
              pv.id    AS variant_id,
              pv.size  AS variant_size,
              pv.color AS variant_color,
              pv.stock AS variant_stock
       FROM   products p
+      LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN product_variants pv ON pv.product_id = p.id
-      WHERE  p.id = ?
+      WHERE  p.id = ? OR p.slug = ?
       ORDER BY pv.id ASC
-    `).all(req.params.id);
+    `).all(req.params.id, req.params.id);
 
     if (!rows.length) return res.status(404).json({ error: "Product not found" });
 
@@ -164,23 +198,34 @@ router.get("/:id", (req, res) => {
   }
 });
 
+// Schema for product creation/update
+const productSchema = z.object({
+  name: z.string().min(1, "Name is required").trim(),
+  price: z.coerce.number().positive("Price must be positive"),
+  compare_at_price: z.coerce.number().nonnegative().optional().nullable(),
+  category: z.union([z.string(), z.number()]),
+  collection: z.string().optional().nullable(),
+  description: z.string().optional().nullable(),
+  sizes: z.union([z.string(), z.array(z.string())]).optional(),
+  stock: z.union([z.string(), z.array(z.coerce.number())]).optional(),
+  meta_title: z.string().optional().nullable(),
+  meta_description: z.string().optional().nullable(),
+  slug: z.string().optional().nullable()
+});
+
 // ── POST /api/products (owner only) ────────────
 router.post(
   "/",
   requireOwner,
-  upload.single("image"),
+  upload.array("images", 10),
   (req, res) => {
     try {
-      const { name, price, category, collection, description } = req.body;
-
-      if (!name || !price || !category) {
-        return res.status(400).json({ error: "name, price, and category are required" });
+      const validated = productSchema.safeParse(req.body);
+      if (!validated.success) {
+        return res.status(400).json({ error: "Validation failed", details: validated.error.format() });
       }
 
-      const priceNum = parseFloat(price);
-      if (isNaN(priceNum) || priceNum <= 0) {
-        return res.status(400).json({ error: "price must be a positive number" });
-      }
+      const { name, price, compare_at_price, category, collection, description } = validated.data;
 
       // multer 2.x strips [] suffix: sizes[] → req.body.sizes (array)
       const rawSizes = req.body.sizes ?? req.body['sizes[]'] ?? [];
@@ -192,44 +237,63 @@ router.post(
         return res.status(400).json({ error: "At least one size is required" });
       }
 
-      // Build absolute URL for the uploaded image
+      // Build absolute URLs for the uploaded images
       const baseUrl = `${req.protocol}://${req.get("host")}`;
-      const imageUrl = req.file
-        ? `${baseUrl}/uploads/${req.file.filename}`
-        : "";
+      const imageUrls = (req.files || []).map(f => `${baseUrl}/uploads/${f.filename}`);
+      const slug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now().toString().slice(-4);
+      
+      // Resolve category_id (if category is string, find or create it)
+      let catId = parseInt(category, 10);
+      if (isNaN(catId)) {
+        const existingCat = db.prepare("SELECT id FROM categories WHERE name = ? OR slug = ?").get(category, category.toLowerCase());
+        if (existingCat) {
+          catId = existingCat.id;
+        } else {
+          const { lastInsertRowid } = db.prepare("INSERT INTO categories (name, slug) VALUES (?, ?)").run(category, category.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
+          catId = lastInsertRowid;
+        }
+      }
 
-      // Generate UUID so id is never null (live DB uses TEXT PRIMARY KEY)
-      const { randomUUID } = require("crypto");
-      const productId = randomUUID();
+      const { lastInsertRowid: productId } = db.prepare(
+          `INSERT INTO products (name, price_paise, compare_at_price_paise, category_id, collection, slug, description)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`
+        ).run(
+          name.trim(),
+          Math.round(priceNum * 100),
+          compare_at_price ? Math.round(parseFloat(compare_at_price) * 100) : null,
+          catId,
+          (collection || "").trim(),
+          slug,
+          (description || "").trim() || null
+        );
 
-      // Calculate total stock from variants for the top-level products.stock column
+      sizes.forEach((size, i) => {
+        const stock = parseInt(stockArr[i] ?? '0', 10);
+        const { lastInsertRowid: variantId } = db.prepare(
+          `INSERT INTO product_variants (product_id, size, stock) VALUES (?, ?, ?)`
+        ).run(productId, size, isNaN(stock) ? 0 : Math.max(0, stock));
+
+        // Log initial stock
+        if (stock > 0) {
+          db.prepare(`INSERT INTO inventory_logs (variant_id, change, reason, admin_id) VALUES (?, ?, ?, ?)`).run(
+            variantId, stock, 'initial_stock', req.owner?.id
+          );
+        }
+      });
+
+      // Handle images (legacy images_json for now, but we should also write to product_images)
+      imageUrls.forEach((url, i) => {
+        db.prepare(`INSERT INTO product_images (product_id, url, position) VALUES (?, ?, ?)`).run(productId, url, i);
+      });
+      const imagesJson = JSON.stringify(imageUrls);
+      
       const totalStock = stockArr.reduce((sum, s) => {
         const val = parseInt(s ?? "0", 10);
         return sum + (isNaN(val) ? 0 : Math.max(0, val));
       }, 0);
 
-      db.prepare(
-          `INSERT INTO products (id, name, price, price_paise, category, collection, image_url, description, stock)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-        ).run(
-          productId,
-          name.trim(),
-          priceNum,
-          Math.round(priceNum * 100),
-          category.trim().toLowerCase(),
-          (collection || "").trim(),
-          imageUrl,
-          (description || "").trim() || null,
-          totalStock
-        );
-      const VALID_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Free Size'];
-      sizes.forEach((size, i) => {
-        if (!VALID_SIZES.includes(size)) return; // discard unknown sizes
-        const stock = parseInt(stockArr[i] ?? '0', 10);
-        db.prepare(
-          `INSERT INTO product_variants (product_id, size, stock) VALUES (?, ?, ?)`
-        ).run(productId, size, isNaN(stock) ? 0 : Math.max(0, stock));
-      });
+      // Keep images_json for backward compatibility until frontend is updated
+      db.prepare(`UPDATE products SET images_json = ? WHERE id = ?`).run(imagesJson, productId);
 
       // Audit log
       db.logAudit({
@@ -312,7 +376,12 @@ router.delete("/:id", requireOwner, (req, res) => {
 // ── PATCH /api/products/:id (owner only) ───────
 router.patch("/:id", requireOwner, (req, res) => {
   try {
-    const { name, price, description, sizes, stock: stockArr } = req.body;
+    const validated = productSchema.partial().safeParse(req.body);
+    if (!validated.success) {
+      return res.status(400).json({ error: "Validation failed", details: validated.error.format() });
+    }
+
+    const { name, price, compare_at_price, description, sizes, stock: stockArr, category_id, meta_title, meta_description, slug } = validated.data;
 
     // 1. Existence check
     const existing = db
@@ -320,61 +389,65 @@ router.patch("/:id", requireOwner, (req, res) => {
       .get(req.params.id);
     if (!existing) return res.status(404).json({ error: "Product not found" });
 
-    // 2. Validate required fields
-    if (!name || !price) {
-      return res.status(400).json({ error: "name and price are required" });
-    }
-    const priceNum = parseFloat(price);
-    if (isNaN(priceNum) || priceNum <= 0) {
-      return res.status(400).json({ error: "price must be a positive number" });
+    // 2. Build update query
+    let updates = [];
+    let params = [];
+    if (name) { updates.push("name = ?"); params.push(name); }
+    if (price) { updates.push("price_paise = ?"); params.push(Math.round(price * 100)); }
+    if (compare_at_price !== undefined) { updates.push("compare_at_price_paise = ?"); params.push(compare_at_price ? Math.round(compare_at_price * 100) : null); }
+    if (description !== undefined) { updates.push("description = ?"); params.push(description); }
+    if (category_id) { updates.push("category_id = ?"); params.push(category_id); }
+    if (meta_title !== undefined) { updates.push("meta_title = ?"); params.push(meta_title); }
+    if (meta_description !== undefined) { updates.push("meta_description = ?"); params.push(meta_description); }
+    if (slug) { updates.push("slug = ?"); params.push(slug); }
+
+    if (updates.length > 0) {
+      params.push(req.params.id);
+      db.prepare(`UPDATE products SET ${updates.join(", ")} WHERE id = ?`).run(...params);
     }
 
-    // 3. Validate + normalise sizes array
-    // Deduplicate before DELETE to prevent orphaned variants on INSERT failure (D-06)
-    const sizesRaw = Array.isArray(sizes) ? sizes : sizes ? [sizes] : [];
-    const stockRaw = Array.isArray(stockArr) ? stockArr : stockArr ? [stockArr] : [];
-    const VALID_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "Free Size"];
-    const seen = new Set();
-    const sizesFiltered = [];
-    const stockFiltered = [];
-    sizesRaw.forEach((sz, i) => {
-      if (!VALID_SIZES.includes(sz)) return;
-      if (seen.has(sz)) return;
-      seen.add(sz);
-      sizesFiltered.push(sz);
-      stockFiltered.push(stockRaw[i]);
+    // 3. Update variants if provided
+    if (sizes || stockArr) {
+      const sizesRaw = Array.isArray(sizes) ? sizes : sizes ? [sizes] : [];
+      const stockRaw = Array.isArray(stockArr) ? stockArr : stockArr ? [stockArr] : [];
+
+    // 5. Update variants with inventory logging
+    // Instead of deleting all, we find what to update, add, or remove
+    const existingVariants = db.prepare("SELECT * FROM product_variants WHERE product_id = ?").all(req.params.id);
+    const submittedSizes = new Set(sizesRaw);
+
+    // Remove variants not in the new list
+    existingVariants.forEach(ev => {
+      if (!submittedSizes.has(ev.size)) {
+        db.prepare("DELETE FROM product_variants WHERE id = ?").run(ev.id);
+        // Log zeroing out stock if we wanted to, but deletion is enough for now
+      }
     });
-    if (!sizesFiltered.length) {
-      return res.status(400).json({ error: "At least one size is required" });
-    }
 
-    // 4. Calculate total stock for products.stock column (redundant but requested)
-    const totalStock = stockFiltered.reduce((sum, s) => {
-      const val = parseInt(s ?? "0", 10);
-      return sum + (isNaN(val) ? 0 : Math.max(0, val));
-    }, 0);
-
-    // 5. Update products row (price stored in paise)
-    db.prepare(
-      "UPDATE products SET name = ?, price = ?, price_paise = ?, description = ?, stock = ? WHERE id = ?"
-    ).run(
-      name.trim(),
-      priceNum,
-      Math.round(priceNum * 100),
-      (description || "").trim() || null,
-      totalStock,
-      req.params.id
-    );
-
-    // 6. Delete all existing variants, then re-insert submitted set (D-06)
-    db.prepare("DELETE FROM product_variants WHERE product_id = ?").run(
-      req.params.id
-    );
-    sizesFiltered.forEach((size, i) => {
-      const s = parseInt(stockFiltered[i] ?? "0", 10);
-      db.prepare(
-        "INSERT INTO product_variants (product_id, size, stock) VALUES (?, ?, ?)"
-      ).run(req.params.id, size, isNaN(s) ? 0 : Math.max(0, s));
+    sizesRaw.forEach((size, i) => {
+      if (!size) return;
+      const newStock = parseInt(stockRaw[i] ?? "0", 10);
+      const ev = existingVariants.find(v => v.size === size);
+      
+      if (ev) {
+        const stockDiff = newStock - ev.stock;
+        if (stockDiff !== 0) {
+          db.prepare("UPDATE product_variants SET stock = ? WHERE id = ?").run(newStock, ev.id);
+          db.prepare(`INSERT INTO inventory_logs (variant_id, change, reason, admin_id) VALUES (?, ?, ?, ?)`).run(
+            ev.id, stockDiff, 'manual_adjustment', req.owner?.id || req.owner?.email
+          );
+        }
+      } else {
+        const { lastInsertRowid: variantId } = db.prepare(
+          "INSERT INTO product_variants (product_id, size, stock) VALUES (?, ?, ?)"
+        ).run(req.params.id, size, newStock);
+        
+        if (newStock !== 0) {
+          db.prepare(`INSERT INTO inventory_logs (variant_id, change, reason, admin_id) VALUES (?, ?, ?, ?)`).run(
+            variantId, newStock, 'manual_adjustment', req.owner?.id || req.owner?.email
+          );
+        }
+      }
     });
 
     // Audit log
@@ -413,6 +486,85 @@ router.patch("/:id", requireOwner, (req, res) => {
   } catch (err) {
     logger.error(err, "PATCH /api/products/:id error");
     res.status(500).json({ error: "Failed to update product" });
+  }
+});
+
+// ── GET /api/products/stats (owner only) ─────────
+router.get("/admin/stats", requireOwner, (req, res) => {
+  try {
+    // 1. Total stock health
+    const stockStats = db.prepare(`
+      SELECT p.id, p.name, COALESCE(SUM(pv.stock), 0) as current_stock
+      FROM products p
+      LEFT JOIN product_variants pv ON p.id = pv.product_id
+      GROUP BY p.id
+      HAVING current_stock < 5
+      ORDER BY current_stock ASC
+    `).all();
+
+    // 2. Best sellers (based on order volume)
+    const bestSellers = db.prepare(`
+      SELECT product_id, name, SUM(quantity) as units_sold
+      FROM order_items
+      GROUP BY product_id
+      ORDER BY units_sold DESC
+      LIMIT 5
+    `).all();
+
+    // 3. Category distribution
+    const categories = db.prepare(`
+      SELECT category, COUNT(*) as count
+      FROM products
+      GROUP BY category
+    `).all();
+
+    res.json({
+      lowStock: stockStats,
+      bestSellers,
+      categories
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch dashboard stats" });
+  }
+});
+
+// ── POST /api/products/bulk-update (owner only) ──
+router.post("/bulk-update", requireOwner, (req, res) => {
+  try {
+    const { productIds, discountPercent, discountFixed, categoryId } = req.body;
+    
+    if (!productIds || !Array.isArray(productIds)) {
+      return res.status(400).json({ error: "productIds array is required" });
+    }
+
+    db.transaction(() => {
+      productIds.forEach(id => {
+        const p = db.prepare("SELECT price_paise FROM products WHERE id = ?").get(id);
+        if (!p) return;
+
+        let newPrice = p.price_paise;
+        if (discountPercent) {
+          newPrice = Math.round(p.price_paise * (1 - discountPercent / 100));
+        } else if (discountFixed) {
+          newPrice = Math.max(0, p.price_paise - (discountFixed * 100));
+        }
+
+        db.prepare("UPDATE products SET price_paise = ?, compare_at_price_paise = ? WHERE id = ?")
+          .run(newPrice, p.price_paise, id);
+          
+        db.logAudit({
+          adminId: req.owner.email,
+          action: 'PRODUCT_BULK_UPDATE',
+          details: `Bulk updated price for product ID: ${id}`,
+          oldValue: { price_paise: p.price_paise },
+          newValue: { price_paise: newPrice }
+        });
+      });
+    })();
+
+    res.json({ success: true, count: productIds.length });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to bulk update products" });
   }
 });
 

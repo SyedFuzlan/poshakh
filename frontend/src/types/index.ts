@@ -1,13 +1,30 @@
 export interface Product {
   id: string;
   name: string;
+  slug: string;
   price: number;
+  compare_at_price?: number;
   formattedPrice: string;
+  formattedCompareAtPrice?: string;
   images: string[];
-  category: string;
+  category_id: number;
+  category_name: string;
+  category: string; // Legacy support
   description?: string;
+  meta_title?: string;
+  meta_description?: string;
   stock?: number;
+  totalStock?: number;
   variants?: { id: string; size: string; color?: string; stock: number }[];
+}
+
+export interface Category {
+  id: number;
+  name: string;
+  slug: string;
+  parent_id: number | null;
+  position: number;
+  description: string | null;
 }
 
 export interface CartItem {

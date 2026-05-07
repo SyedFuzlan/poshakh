@@ -98,14 +98,47 @@ async function initDb() {
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
       name        TEXT    NOT NULL,
       description TEXT,
-      price       REAL    NOT NULL DEFAULT 0,
       price_paise INTEGER NOT NULL DEFAULT 0,
-      category    TEXT    NOT NULL DEFAULT '',
+      category_id INTEGER,
       collection  TEXT    NOT NULL DEFAULT '',
       brand       TEXT,
-      image_url   TEXT    NOT NULL DEFAULT '',
-      stock       INTEGER NOT NULL DEFAULT 0,
-      created_at  TEXT    DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+      slug        TEXT    UNIQUE,
+      meta_title  TEXT,
+      meta_description TEXT,
+      created_at  TEXT    DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+      FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS categories (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      name        TEXT    NOT NULL,
+      parent_id   INTEGER,
+      slug        TEXT    UNIQUE NOT NULL,
+      description TEXT,
+      position    INTEGER DEFAULT 0,
+      FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS product_images (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id  INTEGER NOT NULL,
+      url         TEXT    NOT NULL,
+      alt_text    TEXT,
+      position    INTEGER DEFAULT 0,
+      FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS checkouts (
+      id               TEXT PRIMARY KEY,
+      customer_name    TEXT,
+      customer_phone   TEXT,
+      customer_email   TEXT,
+      items_json       TEXT,
+      total_paise      INTEGER,
+      status           TEXT DEFAULT 'pending', -- 'pending' | 'completed' | 'recovered'
+      last_notified_at TEXT,
+      created_at       TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+      updated_at       TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
     );
 
     CREATE TABLE IF NOT EXISTS product_variants (
@@ -152,20 +185,43 @@ async function initDb() {
       shipping_cost_paise INTEGER,
       total_paise      INTEGER,
       shipped_at       TEXT,
+      courier_name     TEXT,
+      tracking_number  TEXT,
       created_at       TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
     );
 
     CREATE TABLE IF NOT EXISTS order_items (
-      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
       order_id   TEXT    NOT NULL,
-      product_id TEXT,
-      name       TEXT,
+      product_id INTEGER,
       variant_id INTEGER,
+      name       TEXT,
       quantity   INTEGER NOT NULL,
-      price      REAL    NOT NULL,
+      price_paise INTEGER NOT NULL,
       size       TEXT,
       image      TEXT,
       FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS order_status_history (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id    TEXT    NOT NULL,
+      status      TEXT    NOT NULL,
+      comment     TEXT,
+      admin_id    TEXT,
+      created_at  TEXT    DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+      FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS inventory_logs (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      variant_id  INTEGER NOT NULL,
+      change      INTEGER NOT NULL, -- e.g. -1 for sale, +5 for restock
+      reason      TEXT, -- 'sale', 'return', 'manual_adjustment', 'incoming_shipment'
+      order_id    TEXT,
+      admin_id    TEXT,
+      created_at  TEXT    DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+      FOREIGN KEY (variant_id) REFERENCES product_variants(id) ON DELETE CASCADE
     );
     CREATE TABLE IF NOT EXISTS audit_logs (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -176,6 +232,24 @@ async function initDb() {
       new_value  TEXT,
       created_at TEXT    DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
     );
+    
+    CREATE TABLE IF NOT EXISTS promo_codes (
+      id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+      code               TEXT    UNIQUE NOT NULL,
+      type               TEXT    NOT NULL, -- 'percentage' | 'flat'
+      value              REAL    NOT NULL,
+      min_purchase_paise INTEGER DEFAULT 0,
+      expiry_date        TEXT,
+      usage_limit        INTEGER DEFAULT 0, -- 0 = unlimited
+      times_used         INTEGER DEFAULT 0,
+      is_active          INTEGER DEFAULT 1, -- 1 = true, 0 = false
+      created_at         TEXT    DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS site_settings (
+      key   TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
   `);
 
   // ── safe migrations (columns that may not exist in older DBs) ─────────
@@ -185,15 +259,19 @@ async function initDb() {
     }
   };
 
-  safeMigrate('ALTER TABLE products ADD COLUMN price_paise INTEGER NOT NULL DEFAULT 0');
-  safeMigrate('ALTER TABLE products ADD COLUMN collection TEXT NOT NULL DEFAULT ""');
-  safeMigrate('ALTER TABLE products ADD COLUMN brand TEXT');
-  safeMigrate('ALTER TABLE orders ADD COLUMN razorpay_payment_id TEXT');
-  safeMigrate('ALTER TABLE orders ADD COLUMN customer_name TEXT');
-  safeMigrate('ALTER TABLE orders ADD COLUMN customer_email TEXT');
-  safeMigrate('ALTER TABLE orders ADD COLUMN customer_phone TEXT');
-  safeMigrate('ALTER TABLE orders ADD COLUMN payment_method TEXT');
-  safeMigrate('ALTER TABLE orders ADD COLUMN utr TEXT');
+  safeMigrate('ALTER TABLE products ADD COLUMN category_id INTEGER');
+  safeMigrate('ALTER TABLE products ADD COLUMN slug TEXT UNIQUE');
+  safeMigrate('ALTER TABLE products ADD COLUMN meta_title TEXT');
+  safeMigrate('ALTER TABLE products ADD COLUMN meta_description TEXT');
+  safeMigrate('ALTER TABLE order_items ADD COLUMN price_paise INTEGER');
+  
+  // Create default category if none exists
+  try {
+    const cat = _db.prepare("SELECT id FROM categories LIMIT 1").step();
+    if (!cat) {
+      _db.run("INSERT INTO categories (name, slug) VALUES ('Uncategorized', 'uncategorized')");
+    }
+  } catch(e) {}
 
   _save();
   console.log('[db] Ready — path:', DB_PATH);
@@ -243,6 +321,23 @@ function logAudit({ adminId, action, details, oldValue, newValue }) {
 }
 
 // ── module exports ────────────────────────────────────────────────────────
+
+db.logAudit = ({ adminId, action, details, oldValue, newValue }) => {
+  try {
+    db.prepare(`
+      INSERT INTO audit_logs (admin_id, action, details, old_value, new_value)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(
+      adminId || null,
+      action,
+      details || null,
+      oldValue ? JSON.stringify(oldValue) : null,
+      newValue ? JSON.stringify(newValue) : null
+    );
+  } catch (err) {
+    console.error("Failed to write audit log:", err);
+  }
+};
 
 module.exports = {
   initDb,

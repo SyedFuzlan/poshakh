@@ -4,16 +4,13 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import MobileDrawer from "./MobileDrawer";
 import { useStore } from "@/store";
-
-const navLinks = [
-  { label: "NEW ARRIVALS", href: "/products?cat=new" },
-  { label: "SALWAR KAMEEZ", href: "/products?cat=salwar" },
-  { label: "SAREES", href: "/products?cat=sarees" },
-  { label: "LEHENGAS", href: "/products?cat=lehenga" },
-];
+import { trackEvent } from "./PostHogProvider";
+import { getCategories } from "@/lib/products";
+import { Category } from "@/types";
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isMobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const { setAccountDrawerOpen, cart, setCartOpen, customer, isSessionReady } = useStore();
   const router = useRouter();
@@ -22,10 +19,20 @@ export default function Navbar() {
   const isScrolled = !isHome || scrolled;
 
   useEffect(() => {
+    getCategories().then(setCategories);
     const handleScroll = () => setScrolled(window.scrollY > 5);
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  const navLinks = categories
+    .filter(c => !c.parent_id) // Top level only
+    .slice(0, 5)
+    .map(c => ({ label: c.name.toUpperCase(), href: `/products?cat=${c.slug}` }));
+
+  if (!navLinks.some(l => l.label.includes("NEW"))) {
+    navLinks.unshift({ label: "NEW ARRIVALS", href: "/products?cat=new" });
+  }
 
   const navBg = isScrolled
     ? "bg-zohra-cream/95 backdrop-blur-md border-b border-zohra-gold/30 shadow-sm"
@@ -88,6 +95,7 @@ export default function Navbar() {
               <li key={item.href}>
                 <Link
                   href={item.href}
+                  onClick={() => trackEvent('nav_link_clicked', { label: item.label, href: item.href })}
                   className={`font-body font-medium relative group transition-colors ${linkColor}`}
                   style={{ fontSize: "13px", letterSpacing: "1.5px" }}
                 >
@@ -103,6 +111,7 @@ export default function Navbar() {
             {/* Search — desktop only */}
             <button
               aria-label="Search"
+              onClick={() => trackEvent('search_icon_clicked')}
               className={`hidden lg:block transition-colors ${iconColor}`}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -132,7 +141,10 @@ export default function Navbar() {
 
             {/* Cart */}
             <button
-              onClick={() => setCartOpen(true)}
+              onClick={() => {
+                setCartOpen(true);
+                trackEvent('cart_viewed', { item_count: cart.length });
+              }}
               aria-label="Cart"
               className={`relative transition-colors ${iconColor}`}
             >

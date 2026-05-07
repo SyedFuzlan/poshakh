@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import AccountDrawer from "@/components/AccountDrawer";
 import CartDrawer from "@/components/CartDrawer";
 import SessionProvider from "@/components/SessionProvider";
+import { PostHogProvider } from "@/components/PostHogProvider";
 import OrganizationSchema from "@/components/SEO/OrganizationSchema";
 import WebsiteSchema from "@/components/SEO/WebsiteSchema";
 
@@ -90,16 +91,18 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col font-body bg-zohra-cream text-zohra-charcoal selection:bg-zohra-maroon selection:text-zohra-gold overflow-x-hidden">
         <OrganizationSchema />
         <WebsiteSchema />
-        <SessionProvider>
-          <AnnouncementBar />
-          <Navbar />
-          <main className="flex-grow relative">
-            {children}
-          </main>
-          <Footer />
-          <AccountDrawer />
-          <CartDrawer />
-        </SessionProvider>
+        <PostHogProvider>
+          <SessionProvider>
+            <AnnouncementBar />
+            <Navbar />
+            <main className="flex-grow relative">
+              {children}
+            </main>
+            <Footer />
+            <AccountDrawer />
+            <CartDrawer />
+          </SessionProvider>
+        </PostHogProvider>
       </body>
     </html>
   );
