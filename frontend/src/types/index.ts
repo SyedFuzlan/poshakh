@@ -39,7 +39,7 @@ export interface CartItem {
   lineItemId?: string;
 }
 
-export type Category = 'sarees' | 'sharara' | 'anarkali' | 'lehenga' | 'gowns' | 'new arrivals' | 'bestsellers' | 'bridal' | 'festive';
+export type CategoryType = 'sarees' | 'sharara' | 'anarkali' | 'lehenga' | 'gowns' | 'new arrivals' | 'bestsellers' | 'bridal' | 'festive';
 
 export interface ShippingAddress {
   firstName: string;

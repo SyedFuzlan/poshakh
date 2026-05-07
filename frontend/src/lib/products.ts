@@ -1,4 +1,4 @@
-import { Product } from "@/types";
+import { Product, Category } from "@/types";
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:9000";
 
