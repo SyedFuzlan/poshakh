@@ -60,18 +60,27 @@ export default function Navbar() {
             className="flex flex-col items-center justify-center text-center absolute left-1/2 -translate-x-1/2 lg:static lg:left-auto lg:translate-x-0"
           >
             <span
-              className={`font-body uppercase transition-colors mt-1 ${taglineColor}`}
-              style={{ fontSize: "8px", letterSpacing: "2px" }}
+              className={`transition-colors mt-1 ${taglineColor}`}
+              style={{ 
+                fontSize: "10px", 
+                letterSpacing: "1px",
+                fontFamily: "'Brice SemiExpanded', sans-serif",
+                fontWeight: 200, // ExtraLight
+                textTransform: "none" // "made By"
+              }}
             >
-              MADE BY
+              made By
             </span>
             <span
-              className={`font-heading font-medium leading-none transition-colors ${logoColor}`}
-              style={{ fontSize: "32px", letterSpacing: "2px" }}
+              className={`leading-none transition-colors ${logoColor}`}
+              style={{ 
+                fontSize: "36px", 
+                letterSpacing: "1px",
+                fontFamily: "'Coterie', serif"
+              }}
             >
-              ZOHRA
+              Zohra
             </span>
-
           </Link>
 
           {/* Nav Links — desktop only, middle */}

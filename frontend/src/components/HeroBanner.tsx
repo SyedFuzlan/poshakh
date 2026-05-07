@@ -17,92 +17,35 @@ const slides = [
 ];
 
 export default function HeroBanner() {
-  const [current, setCurrent] = useState(0);
-
-  const prev = useCallback(() => setCurrent((c) => (c - 1 + slides.length) % slides.length), []);
-  const next = useCallback(() => setCurrent((c) => (c + 1) % slides.length), []);
-
-  useEffect(() => {
-    const t = setInterval(next, 5000);
-    return () => clearInterval(t);
-  }, [next]);
-
   return (
-    <section
-      className="relative w-full overflow-hidden cursor-pointer"
-      style={{ height: "calc(100vh - 26px)", marginTop: "-60px" }}
-    >
-      {slides.map((slide, i) => (
-        <Link
-          key={i}
-          href={slide.link}
-          className="absolute inset-0 transition-opacity duration-1000 block"
-          style={{ opacity: i === current ? 1 : 0, zIndex: i === current ? 1 : 0 }}
-          tabIndex={i === current ? 0 : -1}
-        >
-          {/* Desktop Image */}
-          <div className="hidden md:block absolute inset-0">
-            <Image
-              src={slide.desktop}
-              alt="ZOHRA Collection"
-              fill
-              className="object-cover object-top"
-              priority={i === 0}
-              sizes="100vw"
-              quality={90}
-            />
-          </div>
-          {/* Mobile Image */}
-          <div className="block md:hidden absolute inset-0">
-            <Image
-              src={slide.mobile}
-              alt="ZOHRA Collection"
-              fill
-              className="object-cover object-top"
-              priority={i === 0}
-              sizes="100vw"
-              quality={85}
-            />
-          </div>
-        </Link>
-      ))}
-
-      {/* Left Arrow */}
-      <button
-        onClick={(e) => { e.preventDefault(); prev(); }}
-        aria-label="Previous slide"
-        className="absolute left-5 top-1/2 -translate-y-1/2 text-white opacity-70 hover:opacity-100 transition-opacity p-5 hidden md:block"
-        style={{ zIndex: 5 }}
-      >
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <polyline points="15 18 9 12 15 6" />
-        </svg>
-      </button>
-
-      {/* Right Arrow */}
-      <button
-        onClick={(e) => { e.preventDefault(); next(); }}
-        aria-label="Next slide"
-        className="absolute right-5 top-1/2 -translate-y-1/2 text-white opacity-70 hover:opacity-100 transition-opacity p-5 hidden md:block"
-        style={{ zIndex: 5 }}
-      >
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <polyline points="9 6 15 12 9 18" />
-        </svg>
-      </button>
-
-      {/* Dots */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-3" style={{ zIndex: 5 }}>
-        {slides.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => setCurrent(i)}
-            aria-label={`Go to slide ${i + 1}`}
-            className="w-2 h-2 rounded-full transition-colors duration-300"
-            style={{ backgroundColor: i === current ? "white" : "rgba(255,255,255,0.5)" }}
+    <section className="relative w-full overflow-hidden">
+      <Link href="/products?cat=new" className="block relative w-full">
+        {/* Desktop Image — uses vh height for banner feel */}
+        <div className="hidden md:block relative w-full" style={{ height: "calc(100vh - 26px)", marginTop: "-60px" }}>
+          <Image
+            src="/images/hero/zohra/web/hero1_web.png"
+            alt="ZOHRA New Collection"
+            fill
+            className="object-cover object-top"
+            priority
+            sizes="100vw"
+            quality={90}
           />
-        ))}
-      </div>
+        </div>
+        
+        {/* Mobile Image — uses natural 4:5 ratio for portrait feel */}
+        <div className="block md:hidden relative w-full aspect-[4/5]">
+          <Image
+            src="/images/hero/zohra/mobile/hero1_mobile.png"
+            alt="ZOHRA New Collection"
+            fill
+            className="object-cover object-center"
+            priority
+            sizes="100vw"
+            quality={85}
+          />
+        </div>
+      </Link>
     </section>
   );
 }
