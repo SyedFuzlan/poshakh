@@ -5,10 +5,10 @@ import Link from "next/link";
 
 export default function HeroBanner() {
   return (
-    <section className="relative w-full overflow-hidden">
+    <section className="relative w-full overflow-hidden" style={{ marginTop: "-60px" }}>
       <Link href="/products?cat=new" className="block relative w-full">
-        {/* Desktop Image — uses vh height for banner feel */}
-        <div className="hidden md:block relative w-full" style={{ height: "calc(100vh - 26px)", marginTop: "-60px" }}>
+        {/* Desktop Image — returns to original full visual balance */}
+        <div className="hidden md:block relative w-full" style={{ height: "calc(100vh - 26px)" }}>
           <Image
             src="/images/hero/zohra/web/hero1_web.png"
             alt="ZOHRA New Collection"
@@ -20,7 +20,7 @@ export default function HeroBanner() {
           />
         </div>
         
-        {/* Mobile Image — uses natural 4:5 ratio for portrait feel */}
+        {/* Mobile Image — preserves the corrected 4:5 portrait layout */}
         <div className="block md:hidden relative w-full aspect-[4/5]">
           <Image
             src="/images/hero/zohra/mobile/hero1_mobile.png"

@@ -5,8 +5,8 @@ export default function SecondaryHero() {
   return (
     <section className="w-full relative overflow-hidden bg-zohra-cream">
       <Link href="/products?cat=sarees" className="block relative w-full">
-        {/* Desktop Image */}
-        <div className="hidden md:block relative w-full aspect-[21/9] lg:aspect-[21/7]">
+        {/* Desktop Image — restored to original tall proportions */}
+        <div className="hidden md:block relative w-full" style={{ height: "120vh" }}>
           <Image
             src="/images/hero/zohra/web/hero2_web.jpg"
             alt="ZOHRA Collection Showcase"
@@ -17,7 +17,7 @@ export default function SecondaryHero() {
           />
         </div>
         
-        {/* Mobile Image — 4:5 ratio consistent with Hero1 */}
+        {/* Mobile Image — preserves the corrected 4:5 portrait layout */}
         <div className="block md:hidden relative w-full aspect-[4/5]">
           <Image
             src="/images/hero/zohra/mobile/hero2_mobile.png"
