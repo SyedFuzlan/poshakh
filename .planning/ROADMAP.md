@@ -77,6 +77,138 @@ Move from ~80% functional local app to fully deployed, customer-ready store.
 
 ---
 
+---
+
+## Milestone: Security & Stability (Audit Fixes)
+
+Critical security, correctness, and production-readiness fixes surfaced by staff-level backend audit.
+
+---
+
+## Phase 05 — Critical Hotfixes
+
+**Goal:** Fix all deploy-blocking bugs: priceNum typo crashes product creation, requireOwner skips role check, PII logged in error handlers, promo times_used never incremented.
+
+**Status:** not-started
+
+**Plans:** 4 plans
+
+### Wave 1 (parallel)
+- [ ] 05-PLAN-01.md — Fix priceNum undefined typo (products.js lines 271 and 314)
+- [ ] 05-PLAN-02.md — Add role guard to requireOwner middleware
+- [ ] 05-PLAN-03.md — Add promo_code column to checkouts + increment times_used on checkout creation
+
+### Wave 2 (after Wave 1)
+- [ ] 05-PLAN-04.md — Sanitize PII in all error handlers (logger.js serializers + generic 500 responses across all routes)
+
+---
+
+## Phase 06 — Security Hardening
+
+**Goal:** Hash owner password, timing-safe webhook HMAC, enforce webhook secret, add rate limiting to unprotected routes, payment idempotency keys.
+
+**Status:** not-started
+
+### Plans
+
+- [ ] 06-01: Hash owner password with bcrypt in auth.js; remove plaintext compare
+- [ ] 06-02: Razorpay webhook — use `crypto.timingSafeEqual`, reject if WEBHOOK_SECRET missing
+- [ ] 06-03: Add rate limiting to `/api/customers/signup` and `/api/checkouts`
+- [ ] 06-04: Idempotency key tracking for payments — reject duplicate payment_id inserts
+
+---
+
+## Phase 07 — Auth Improvements
+
+**Goal:** Replace 30-day JWT with short-lived access + refresh tokens, add logout endpoint, email verification, password reset.
+
+**Status:** not-started
+
+### Plans
+
+- [ ] 07-01: Refresh token system (15min access + 7d refresh, POST /api/auth/refresh)
+- [ ] 07-02: Logout endpoint — invalidate refresh token in DB
+- [ ] 07-03: Email verification flow on signup
+- [ ] 07-04: Password reset flow (forgot → token email → reset endpoint)
+
+---
+
+## Phase 08 — PostgreSQL Migration
+
+**Goal:** Replace sql.js (SQLite in-memory) with PostgreSQL + pg-pool. Add migration system, indexes, parameterized queries, DB transactions for payment flow.
+
+**Status:** not-started
+
+### Plans
+
+- [ ] 08-01: Install pg, pg-pool; rewrite db.js connection layer
+- [ ] 08-02: Migrate all CREATE TABLE statements to db-migrate migration files
+- [ ] 08-03: Add indexes on customers(phone, email), orders(status), products(category)
+- [ ] 08-04: Wrap payment create+inventory deduction in DB transaction
+- [ ] 08-05: Fix all dynamic WHERE string concatenations to parameterized queries
+
+---
+
+## Phase 09 — Inventory & Orders
+
+**Goal:** Prevent overselling via stock reservation, enforce valid order state transitions.
+
+**Status:** not-started
+
+### Plans
+
+- [ ] 09-01: Add `reserved_qty` column; reserve stock on order create, release on timeout/fail
+- [ ] 09-02: Order state machine — validate transitions (pending→confirmed→processing→shipped→delivered)
+
+---
+
+## Phase 10 — Missing Core Features
+
+**Goal:** Soft deletes, return/refund flow, webhook retry idempotency, API versioning (/api/v1/).
+
+**Status:** not-started
+
+### Plans
+
+- [ ] 10-01: Soft deletes — add `deleted_at` to products/orders/customers; filter in all queries
+- [ ] 10-02: Return/refund flow — POST /api/orders/:id/return, owner approval, Razorpay refund API
+- [ ] 10-03: Webhook idempotency — store processed Razorpay event IDs, skip duplicates
+- [ ] 10-04: API versioning — prefix all routes `/api/v1/`
+
+---
+
+## Phase 11 — Observability & DevOps
+
+**Goal:** Request ID correlation, replace console.log with logger, Prometheus metrics, graceful shutdown, Dockerfile, fix .gitignore.
+
+**Status:** not-started
+
+### Plans
+
+- [ ] 11-01: Request ID middleware (crypto.randomUUID), propagate to all log entries
+- [ ] 11-02: Replace all console.log/console.error with pino logger
+- [ ] 11-03: Add prom-client — http_request_duration, orders_created, stock_level, payment_errors
+- [ ] 11-04: Graceful shutdown — drain pending requests, cancel recovery task on SIGTERM
+- [ ] 11-05: Multi-stage Dockerfile + GET /health endpoint; add data/ to .gitignore
+
+---
+
+## Phase 12 — Test Suite
+
+**Goal:** 80%+ integration test coverage on payment flow, inventory concurrency, order state machine, auth flows, requireOwner middleware.
+
+**Status:** not-started
+
+### Plans
+
+- [ ] 12-01: Payment flow tests — create-order→verify→webhook, idempotency, bad signature
+- [ ] 12-02: Inventory concurrency test — 2 simultaneous orders for qty=1, only one succeeds
+- [ ] 12-03: Order state machine tests — all invalid transitions return 400
+- [ ] 12-04: Auth flow tests — signup→verify→login→refresh→logout, password reset
+- [ ] 12-05: requireOwner middleware — non-owner JWT returns 403
+
+---
+
 ## Backlog
 
 (Items deferred from prior phases go here as `999.x`)
