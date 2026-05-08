@@ -23,6 +23,7 @@ interface RawProduct {
   meta_title?: string;
   meta_description?: string;
   variants?: Product["variants"];
+  totalStock?: number;
 }
 
 function mapProduct(p: RawProduct): Product {
@@ -41,6 +42,7 @@ function mapProduct(p: RawProduct): Product {
     meta_title:     p.meta_title,
     meta_description: p.meta_description,
     variants:       p.variants ?? [],
+    totalStock:     p.totalStock,
   };
 }
 

@@ -48,7 +48,7 @@ export default function CartDrawer() {
       <div className="relative w-full max-w-md bg-zohra-cream h-full flex flex-col shadow-2xl animate-slide-in-right z-10">
         <div className="flex items-center justify-between p-6 border-b border-zohra-gold/20 bg-white">
           <span className="font-heading text-2xl tracking-widest font-bold text-zohra-charcoal uppercase">My Bag ({cart.length})</span>
-          <button onClick={() => setCartOpen(false)} className="text-zohra-charcoal hover:text-zohra-maroon transition-colors">
+          <button onClick={() => setCartOpen(false)} aria-label="Close cart" className="text-zohra-charcoal hover:text-zohra-maroon transition-colors">
              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>

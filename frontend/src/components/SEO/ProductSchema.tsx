@@ -2,8 +2,8 @@ import { Product } from "@/types";
 
 export default function ProductSchema({ product }: { product: Product }) {
   const slug = product.slug || product.id;
-  const totalStock = product.totalStock ?? product.stock ?? 1;
-  const availability = totalStock > 0
+  const inStock = product.variants?.some(v => v.stock > 0) ?? (product.totalStock ?? product.stock ?? 1) > 0;
+  const availability = inStock
     ? "https://schema.org/InStock"
     : "https://schema.org/OutOfStock";
 
