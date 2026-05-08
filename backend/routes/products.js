@@ -533,38 +533,49 @@ router.get("/admin/stats", requireOwner, (req, res) => {
 // ── POST /api/products/bulk-update (owner only) ──
 router.post("/bulk-update", requireOwner, (req, res) => {
   try {
-    const { productIds, discountPercent, discountFixed, categoryId } = req.body;
+    const { category_id, type, value } = req.body;
     
-    if (!productIds || !Array.isArray(productIds)) {
-      return res.status(400).json({ error: "productIds array is required" });
+    if (typeof value !== "number" || isNaN(value)) {
+      return res.status(400).json({ error: "A valid numerical value is required" });
+    }
+
+    let query = "SELECT id, price_paise FROM products";
+    let params = [];
+    if (category_id) {
+      query += " WHERE category_id = ?";
+      params.push(category_id);
+    }
+    const products = db.prepare(query).all(...params);
+
+    if (products.length === 0) {
+      return res.status(404).json({ error: "No products found to update" });
     }
 
     db.transaction(() => {
-      productIds.forEach(id => {
-        const p = db.prepare("SELECT price_paise FROM products WHERE id = ?").get(id);
-        if (!p) return;
-
+      products.forEach(p => {
         let newPrice = p.price_paise;
-        if (discountPercent) {
-          newPrice = Math.round(p.price_paise * (1 - discountPercent / 100));
-        } else if (discountFixed) {
-          newPrice = Math.max(0, p.price_paise - (discountFixed * 100));
+        if (type === 'percentage') {
+          newPrice = Math.round(p.price_paise * (1 + value / 100));
+        } else if (type === 'fixed') {
+          newPrice = Math.max(0, p.price_paise + (value * 100));
         }
+        
+        let compareAt = p.price_paise > newPrice ? p.price_paise : null;
 
         db.prepare("UPDATE products SET price_paise = ?, compare_at_price_paise = ? WHERE id = ?")
-          .run(newPrice, p.price_paise, id);
+          .run(newPrice, compareAt, p.id);
           
         db.logAudit({
           adminId: req.owner.email,
           action: 'PRODUCT_BULK_UPDATE',
-          details: `Bulk updated price for product ID: ${id}`,
+          details: `Bulk updated price for product ID: ${p.id} via ${type}`,
           oldValue: { price_paise: p.price_paise },
-          newValue: { price_paise: newPrice }
+          newValue: { price_paise: newPrice, compare_at_price_paise: compareAt }
         });
       });
     })();
 
-    res.json({ success: true, count: productIds.length });
+    res.json({ success: true, count: products.length });
   } catch (err) {
     res.status(500).json({ error: "Failed to bulk update products" });
   }
