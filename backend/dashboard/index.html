@@ -800,6 +800,9 @@ async function saveProduct() {
   const category = document.getElementById('p-category').value;
   const collection = document.getElementById('p-collection').value.trim();
   const description = document.getElementById('p-description').value.trim();
+  const metaTitle = document.getElementById('p-meta-title').value.trim();
+  const metaDescription = document.getElementById('p-meta-description').value.trim();
+  const slug = document.getElementById('p-slug').value.trim();
   const imageFiles = document.getElementById('product-images').files;
 
   if (!name || !price || !category) { alert('Name, price and category are required.'); return; }
@@ -812,22 +815,6 @@ async function saveProduct() {
     return;
   }
   sizesError.style.display = 'none';
-
-  const fd = new FormData();
-  fd.append('name', name);
-  fd.append('price', price);
-  if (compareAt) fd.append('compare_at_price', compareAt);
-  const category = document.getElementById('p-category').value;
-  const collection = document.getElementById('p-collection').value.trim();
-  const description = document.getElementById('p-description').value.trim();
-  const metaTitle = document.getElementById('p-meta-title').value.trim();
-  const metaDescription = document.getElementById('p-meta-description').value.trim();
-  const slug = document.getElementById('p-slug').value.trim();
-
-  if (!name || !price || !category) return alert('Name, price and category are required');
-
-  const checkedSizes = document.querySelectorAll('input[name="sizes[]"]:checked');
-  if (!checkedSizes.length) return alert('Select at least one size');
 
   const fd = new FormData();
   fd.append('name', name);
