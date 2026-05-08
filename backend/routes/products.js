@@ -381,7 +381,7 @@ router.patch("/:id", requireOwner, (req, res) => {
       return res.status(400).json({ error: "Validation failed", details: validated.error.format() });
     }
 
-    const { name, price, compare_at_price, description, sizes, stock: stockArr, category_id, meta_title, meta_description, slug } = validated.data;
+    const { name, price, compare_at_price, description, sizes, stock: stockArr, category, collection, meta_title, meta_description, slug } = validated.data;
 
     // 1. Existence check
     const existing = db
@@ -396,7 +396,8 @@ router.patch("/:id", requireOwner, (req, res) => {
     if (price) { updates.push("price_paise = ?"); params.push(Math.round(price * 100)); }
     if (compare_at_price !== undefined) { updates.push("compare_at_price_paise = ?"); params.push(compare_at_price ? Math.round(compare_at_price * 100) : null); }
     if (description !== undefined) { updates.push("description = ?"); params.push(description); }
-    if (category_id) { updates.push("category_id = ?"); params.push(category_id); }
+    if (category) { updates.push("category_id = ?"); params.push(category); }
+    if (collection !== undefined) { updates.push("collection = ?"); params.push(collection); }
     if (meta_title !== undefined) { updates.push("meta_title = ?"); params.push(meta_title); }
     if (meta_description !== undefined) { updates.push("meta_description = ?"); params.push(meta_description); }
     if (slug) { updates.push("slug = ?"); params.push(slug); }

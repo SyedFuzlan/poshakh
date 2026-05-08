@@ -279,27 +279,58 @@
         <!-- Phase 01: sizes & stock -->
         <div class="full">
           <label class="pf-label">Sizes &amp; Stock <span style="color:var(--error)">*</span></label>
-          <div id="sizes-container" style="display:flex;flex-direction:column;gap:12px;margin-top:8px">
-            <script>
-              function toggleNewStock(cb) {
-                const row = cb.closest('.size-row');
-                const ctrl = document.getElementById('new-stock-ctrl-' + cb.value);
-                if (cb.checked) {
-                  ctrl.style.display = 'flex';
-                  row.style.borderColor = 'var(--maroon)';
-                  row.style.background = 'var(--cream-warm)';
-                } else {
-                  ctrl.style.display = 'none';
-                  row.style.borderColor = 'var(--border-subtle)';
-                  row.style.background = '#f7f4f0';
-                }
+          <script>
+            function toggleNewStock(cb) {
+              const row = cb.closest('.size-row');
+              const ctrl = document.getElementById(cb.id.replace('size-', 'new-stock-ctrl-'));
+              if (cb.checked) {
+                if (ctrl) ctrl.style.display = 'flex';
+                row.style.borderColor = 'var(--maroon)';
+                row.style.background = 'var(--cream-warm)';
+              } else {
+                if (ctrl) ctrl.style.display = 'none';
+                const stockInput = document.getElementById(cb.id.replace('size-', 'stock-'));
+                if (stockInput) stockInput.value = '0';
+                row.style.borderColor = 'var(--border-subtle)';
+                row.style.background = '#f7f4f0';
               }
-              function adjustNewStock(size, delta) {
-                const input = document.getElementById('stock-' + size);
-                let val = parseInt(input.value || '0', 10);
-                input.value = Math.max(0, val + delta);
+            }
+            function adjustNewStock(sz, delta) {
+              const input = document.getElementById('stock-' + sz);
+              if (!input) return;
+              const val = parseInt(input.value || '0', 10);
+              input.value = Math.max(0, val + delta);
+            }
+            function addCustomSize(containerId, inputId, prefix) {
+              const input = document.getElementById(inputId);
+              const val = (input.value || '').trim();
+              if (!val) return;
+              
+              if (document.getElementById(prefix + 'size-' + val)) {
+                alert('Size already exists');
+                return;
               }
-            </script>
+              
+              const container = document.getElementById(containerId);
+              const html = `
+                <div class="size-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--cream-warm);border:1px solid var(--maroon);border-radius:4px;padding:8px 12px;margin-bottom:8px">
+                  <div style="display:flex;align-items:center;gap:8px;flex:1">
+                    <input type="checkbox" id="${prefix}size-${val}" name="${prefix}sizes[]" value="${val}" checked onchange="${prefix ? 'emToggleStock(this)' : 'toggleNewStock(this)'}" style="width:16px;height:16px;accent-color:var(--maroon);cursor:pointer"/>
+                    <label for="${prefix}size-${val}" style="font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;min-width:36px">${val}</label>
+                  </div>
+                  <div id="${prefix}new-stock-ctrl-${val}" style="display:flex;align-items:center;gap:4px">
+                    <span style="font-size:10px;color:#888;margin-right:4px">Stock:</span>
+                    <button type="button" onclick="${prefix ? 'adjustStock' : 'adjustNewStock'}('${val}', -1)" style="width:28px;height:28px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer;font-weight:bold">-</button>
+                    <input type="number" id="${prefix}stock-${val}" name="${prefix}stock[]" min="0" value="0" style="width:50px;height:28px;border:1px solid #ddd;border-radius:4px;text-align:center;font-size:12px"/>
+                    <button type="button" onclick="${prefix ? 'adjustStock' : 'adjustNewStock'}('${val}', 1)" style="width:28px;height:28px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer;font-weight:bold">+</button>
+                  </div>
+                </div>
+              `;
+              container.insertAdjacentHTML('beforeend', html);
+              input.value = '';
+            }
+          </script>
+          <div id="new-sizes-container" style="display:flex;flex-direction:column;gap:8px">
             <div class="size-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:#f7f4f0;border:1px solid var(--border-subtle);border-radius:4px;padding:8px 12px">
               <div style="display:flex;align-items:center;gap:8px;flex:1">
                 <input type="checkbox" id="size-XS" name="sizes[]" value="XS" onchange="toggleNewStock(this)" style="width:16px;height:16px;accent-color:var(--maroon);cursor:pointer"/>
@@ -378,8 +409,12 @@
               </div>
             </div>
           </div>
-          <p id="sizes-error" style="color:var(--error);font-size:12px;margin-top:8px;display:none">Select at least one size.</p>
+          <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
+            <input type="text" id="new-size-name" placeholder="Custom Size (e.g. 4XL)" style="height:32px;border:1px solid #ddd;border-radius:4px;padding:0 8px;font-size:12px;width:140px"/>
+            <button type="button" onclick="addCustomSize('new-sizes-container', 'new-size-name', '')" style="height:32px;background:var(--maroon);color:#fff;border:none;border-radius:4px;padding:0 12px;font-size:12px;cursor:pointer;font-weight:bold">+ Add</button>
+          </div>
         </div>
+        <div id="sizes-error" style="color:var(--error);font-size:12px;font-weight:700;display:none;margin-bottom:16px">Please select at least one size.</div>
       </div>
       <button class="btn-save" onclick="saveProduct()">SAVE PRODUCT</button>
     </div>
@@ -1056,6 +1091,7 @@ async function openEditModal(productId) {
   const existingSizes = new Set(p.variants.map(v => v.size));
   const stockMap = Object.fromEntries(p.variants.map(v => [v.size, v.stock]));
   const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Free Size'];
+  existingSizes.forEach(sz => { if (!SIZES.includes(sz)) SIZES.push(sz); });
 
   const pillsHtml = SIZES.map(sz => {
     const checked = existingSizes.has(sz) ? 'checked' : '';
@@ -1096,12 +1132,18 @@ async function openEditModal(productId) {
         <input class="pf-input" type="number" id="em-compare-at" min="1" value="${esc(String(p.compare_at_price || ''))}"/>
       </div>
     </div>
-    <div style="margin-bottom:16px">
-      <label class="pf-label">Category</label>
-      <select class="pf-input" id="em-category">
-        <option value="">Select category</option>
-        ${categories.map(c => `<option value="${c.id}" ${p.category_id === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
-      </select>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div>
+        <label class="pf-label">Category</label>
+        <select class="pf-input" id="em-category">
+          <option value="">Select category</option>
+          ${categories.map(c => `<option value="${c.id}" ${p.category_id === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label class="pf-label">Collection</label>
+        <input class="pf-input" type="text" id="em-collection" value="${esc(p.collection || '')}" placeholder="e.g. Summer 2026"/>
+      </div>
     </div>
     <div class="field" style="margin-bottom:16px">
       <label class="pf-label" for="em-description">Description (optional)</label>
@@ -1130,6 +1172,10 @@ async function openEditModal(productId) {
       <div id="em-sizes-container" style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
         ${pillsHtml}
       </div>
+      <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
+        <input type="text" id="em-new-size-name" placeholder="Custom Size (e.g. 4XL)" style="height:32px;border:1px solid #ddd;border-radius:4px;padding:0 8px;font-size:12px;width:140px"/>
+        <button type="button" onclick="addCustomSize('em-sizes-container', 'em-new-size-name', 'em-')" style="height:32px;background:var(--maroon);color:#fff;border:none;border-radius:4px;padding:0 12px;font-size:12px;cursor:pointer;font-weight:bold">+ Add</button>
+      </div>
     </div>
     <div style="display:flex;gap:16px;margin-top:24px;justify-content:flex-end">
       <button onclick="closeEditModal()" style="background:none;border:1px solid #ddd;color:var(--charcoal);padding:10px 20px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:700;text-transform:uppercase">CANCEL</button>
@@ -1146,6 +1192,11 @@ async function saveEditModal(productId) {
   const price = (document.getElementById('em-price').value || '').trim();
   const compareAt = (document.getElementById('em-compare-at').value || '').trim();
   const description = (document.getElementById('em-description').value || '').trim();
+  const category_id = document.getElementById('em-category').value;
+  const collection = (document.getElementById('em-collection').value || '').trim();
+  const meta_title = (document.getElementById('em-meta-title').value || '').trim();
+  const slug = (document.getElementById('em-slug').value || '').trim();
+  const meta_description = (document.getElementById('em-meta-description').value || '').trim();
 
   if (!name || !price) { alert('Name and price are required.'); return; }
 
@@ -1169,6 +1220,11 @@ async function saveEditModal(productId) {
       price: parseFloat(price), 
       compare_at_price: compareAt ? parseFloat(compareAt) : null,
       description, 
+      category_id: category_id || null,
+      collection,
+      meta_title,
+      slug,
+      meta_description,
       sizes, 
       stock
     });
