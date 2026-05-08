@@ -16,7 +16,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   // Collection/Category routes
-  const categories = ['sarees', 'sharara', 'anarkali', 'lehenga', 'gowns'];
+  const categories = ['sarees', 'sharara', 'anarkali', 'lehenga', 'gowns', 'bridal', 'festive', 'bestsellers'];
   const categoryRoutes = categories.map((cat) => ({
     url: `${baseUrl}/products?cat=${cat}`,
     lastModified: new Date(),
@@ -29,7 +29,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const products = await getProducts();
     productRoutes = products.map((product) => ({
-      url: `${baseUrl}/products/${product.id}`,
+      url: `${baseUrl}/products/${product.slug}`,
       lastModified: new Date(),
       changeFrequency: 'weekly' as const,
       priority: 0.6,

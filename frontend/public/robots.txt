@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+Disallow: /checkout
+Disallow: /account
+Disallow: /order-confirmation
+Disallow: /api/
+
+Sitemap: https://www.madebyzohra.in/sitemap.xml

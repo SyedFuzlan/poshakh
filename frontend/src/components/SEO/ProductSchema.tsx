@@ -1,6 +1,12 @@
 import { Product } from "@/types";
 
 export default function ProductSchema({ product }: { product: Product }) {
+  const slug = product.slug || product.id;
+  const totalStock = product.totalStock ?? product.stock ?? 1;
+  const availability = totalStock > 0
+    ? "https://schema.org/InStock"
+    : "https://schema.org/OutOfStock";
+
   const schema = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -14,10 +20,10 @@ export default function ProductSchema({ product }: { product: Product }) {
     },
     "offers": {
       "@type": "Offer",
-      "url": `https://www.madebyzohra.in/products/${product.id}`,
+      "url": `https://www.madebyzohra.in/products/${slug}`,
       "priceCurrency": "INR",
       "price": product.price,
-      "availability": "https://schema.org/InStock",
+      "availability": availability,
       "itemCondition": "https://schema.org/NewCondition"
     }
   };

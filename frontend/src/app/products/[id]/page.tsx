@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getProductById, getProducts } from "@/lib/products";
 import ProductDetailClient from "./ProductDetailClient";
 import ProductSchema from "@/components/SEO/ProductSchema";
+import BreadcrumbSchema from "@/components/SEO/BreadcrumbSchema";
 
 export async function generateStaticParams() {
   try {
@@ -55,9 +56,23 @@ export default async function ProductDetailPage({
     notFound();
   }
 
+  const breadcrumbs = [
+    { name: "Home", url: "https://www.madebyzohra.in" },
+    { name: "Shop", url: "https://www.madebyzohra.in/products" },
+    {
+      name: product.category_name,
+      url: `https://www.madebyzohra.in/products?cat=${product.category}`,
+    },
+    {
+      name: product.name,
+      url: `https://www.madebyzohra.in/products/${product.slug || product.id}`,
+    },
+  ];
+
   return (
     <>
       <ProductSchema product={product} />
+      <BreadcrumbSchema items={breadcrumbs} />
       <ProductDetailClient key={product.id} product={product} />
     </>
   );
