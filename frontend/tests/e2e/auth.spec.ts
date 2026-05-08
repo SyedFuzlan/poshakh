@@ -93,13 +93,6 @@ test.describe('Auth', () => {
   })
 
   test('logged-in user clicking account goes to /account', async ({ page }) => {
-    // Inject mock session so Zustand thinks user is logged in
-    await page.addInitScript((customer) => {
-      // Zustand doesn't persist customer to localStorage by default
-      // We simulate being logged in by intercepting the session endpoint
-      window.__TEST_CUSTOMER = customer
-    }, MOCK_CUSTOMER)
-
     // Mock session to return customer
     await page.route('/api/auth/session', (route) => {
       route.fulfill({
