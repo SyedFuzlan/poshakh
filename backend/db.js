@@ -92,6 +92,23 @@ async function initDb() {
   console.log('[db] Initialising schema…');
   _db.run('PRAGMA foreign_keys = ON;');
 
+  // ── Migrations ────────────────────────────────────────────────────────
+  const migrations = [
+    "ALTER TABLE products ADD COLUMN description TEXT;",
+    "ALTER TABLE products ADD COLUMN brand TEXT;",
+    "ALTER TABLE products ADD COLUMN category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL;",
+    "ALTER TABLE products ADD COLUMN meta_title TEXT;",
+    "ALTER TABLE products ADD COLUMN meta_description TEXT;",
+    "ALTER TABLE products ADD COLUMN slug TEXT;",
+    "ALTER TABLE products ADD COLUMN compare_at_price_paise INTEGER;",
+    "ALTER TABLE orders ADD COLUMN customer_email TEXT;",
+    "ALTER TABLE order_items ADD COLUMN price_paise INTEGER;"
+  ];
+
+  for (const m of migrations) {
+    try { _db.run(m); } catch (e) { /* ignore if already exists */ }
+  }
+
   // ── tables ────────────────────────────────────────────────────────────
   _db.run(`
     CREATE TABLE IF NOT EXISTS products (
@@ -99,6 +116,7 @@ async function initDb() {
       name        TEXT    NOT NULL,
       description TEXT,
       price_paise INTEGER NOT NULL DEFAULT 0,
+      compare_at_price_paise INTEGER,
       category_id INTEGER,
       collection  TEXT    NOT NULL DEFAULT '',
       brand       TEXT,

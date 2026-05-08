@@ -542,12 +542,21 @@ let categories = [];
 async function loadCategories() {
   try {
     categories = await apiFetch('/api/products/categories');
-    const select = document.getElementById('p-category');
-    if (select) {
-      const val = select.value;
-      select.innerHTML = '<option value="">Select category</option>' + 
+    // Update main creation dropdown
+    const pSelect = document.getElementById('p-category');
+    if (pSelect) {
+      const val = pSelect.value;
+      pSelect.innerHTML = '<option value="">Select category</option>' + 
         categories.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
-      select.value = val;
+      pSelect.value = val;
+    }
+    // Update edit modal dropdown if it's currently open
+    const emSelect = document.getElementById('em-category');
+    if (emSelect) {
+      const val = emSelect.value;
+      emSelect.innerHTML = '<option value="">Select category</option>' + 
+        categories.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+      emSelect.value = val;
     }
   } catch (e) { console.error('Failed to load categories', e); }
 }
@@ -559,7 +568,11 @@ async function addNewCategoryPrompt() {
     const res = await apiFetch('/api/products/categories', 'POST', { name });
     alert("Category created!");
     await loadCategories();
-    document.getElementById('p-category').value = res.id;
+    // Select the new category in whichever dropdown is relevant
+    const pSel = document.getElementById('p-category');
+    const emSel = document.getElementById('em-category');
+    if (emSel) emSel.value = res.id;
+    else if (pSel) pSel.value = res.id;
   } catch (e) { alert("Failed: " + e.message); }
 }
 
@@ -800,7 +813,7 @@ function renderProducts(products) {
   if (!products.length) { el.innerHTML = '<div class="empty-state">No products yet. Add one above!</div>'; return; }
   el.innerHTML = `<div class="products-grid">${products.map(p => `
     <div class="product-tile" onclick="openEditModal('${esc(String(p.id))}')" style="cursor:pointer">
-      <img src="${esc(p.image_url||'')}" alt="${esc(p.name)}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22220%22 height=%22200%22><rect fill=%22%23f0ece6%22 width=%22100%25%22 height=%22100%25%22/><text x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 fill=%22%23888%22 dy=%22.3em%22 font-size=%2240%22>🛍️</text></svg>'"/>
+      <img src="${esc(p.images && p.images[0] ? p.images[0] : '')}" alt="${esc(p.name)}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22220%22 height=%22200%22><rect fill=%22%23f0ece6%22 width=%22100%25%22 height=%22100%25%22/><text x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 fill=%22%23888%22 dy=%22.3em%22 font-size=%2240%22>🛍️</text></svg>'"/>
       <div class="tile-body">
         <div class="tile-name">${esc(p.name)}</div>
         <div class="tile-meta">${esc(p.category)}${p.collection ? ' · ' + esc(p.collection) : ''}</div>

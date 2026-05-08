@@ -30,15 +30,23 @@ router.post("/categories", requireOwner, (req, res) => {
   try {
     const { name, parent_id, position, description } = req.body;
     if (!name) return res.status(400).json({ error: "Name is required" });
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    let slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    if (!slug) slug = 'cat-' + Date.now();
     
+    // Check if slug exists, if so append a random string
+    const existing = db.prepare("SELECT id FROM categories WHERE slug = ?").get(slug);
+    if (existing) {
+      slug += '-' + Math.floor(Math.random() * 1000);
+    }
+
     const { lastInsertRowid } = db.prepare(
       "INSERT INTO categories (name, slug, parent_id, position, description) VALUES (?, ?, ?, ?, ?)"
     ).run(name, slug, parent_id || null, position || 0, description || null);
     
     res.json({ id: lastInsertRowid, name, slug });
   } catch (err) {
-    res.status(500).json({ error: "Failed to create category" });
+    logger.error(err, "Failed to create category");
+    res.status(500).json({ error: err.message || "Failed to create category" });
   }
 });
 
@@ -204,6 +212,7 @@ const productSchema = z.object({
   price: z.coerce.number().positive("Price must be positive"),
   compare_at_price: z.coerce.number().nonnegative().optional().nullable(),
   category: z.union([z.string(), z.number()]),
+  category_id: z.union([z.string(), z.number()]).optional().nullable(),
   collection: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
   sizes: z.union([z.string(), z.array(z.string())]).optional(),
@@ -255,16 +264,19 @@ router.post(
       }
 
       const { lastInsertRowid: productId } = db.prepare(
-          `INSERT INTO products (name, price_paise, compare_at_price_paise, category_id, collection, slug, description)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`
+          `INSERT INTO products (name, price_paise, compare_at_price_paise, category, category_id, collection, slug, description, meta_title, meta_description)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         ).run(
           name.trim(),
           Math.round(priceNum * 100),
           compare_at_price ? Math.round(parseFloat(compare_at_price) * 100) : null,
+          "", // legacy category column
           catId,
           (collection || "").trim(),
           slug,
-          (description || "").trim() || null
+          (description || "").trim() || null,
+          (req.body.meta_title || "").trim() || null,
+          (req.body.meta_description || "").trim() || null
         );
 
       sizes.forEach((size, i) => {
@@ -340,22 +352,19 @@ router.delete("/:id", requireOwner, (req, res) => {
       .get(req.params.id);
     if (!row) return res.status(404).json({ error: "Product not found" });
 
-    // Delete the image file from disk if it's a local upload
-    // Use a safe fallback that handles both absolute URLs and relative paths
-    if (row.image_url && row.image_url.includes("/uploads/")) {
-      try {
-        const pathname = row.image_url.startsWith("http")
-          ? new URL(row.image_url).pathname
-          : row.image_url;
-        const filename = path.basename(pathname);
-        const filePath = path.join(UPLOADS_DIR, filename);
-        if (fs.existsSync(filePath)) {
-          try { fs.unlinkSync(filePath); } catch { /* ignore */ }
-        }
-      } catch { /* ignore image cleanup errors — still delete the record */ }
+    // Cleanup all local image files associated with this product
+    const images = db.prepare("SELECT url FROM product_images WHERE product_id = ?").all(req.params.id);
+    for (const img of images) {
+      if (img.url && img.url.includes("/uploads/")) {
+        try {
+          const filename = path.basename(img.url.split('?')[0]);
+          const filePath = path.join(UPLOADS_DIR, filename);
+          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        } catch {}
+      }
     }
 
-    // Delete record unconditionally — image cleanup failure must not block deletion
+    // Delete record unconditionally — foreign keys handle variant/image row cleanup
     db.prepare("DELETE FROM products WHERE id = ?").run(req.params.id);
     
     // Audit log
@@ -369,7 +378,7 @@ router.delete("/:id", requireOwner, (req, res) => {
     res.json({ success: true });
   } catch (err) {
     logger.error(err, "Failed to delete product");
-    res.status(500).json({ error: "Failed to delete product" });
+    res.status(500).json({ error: err.message || "Failed to delete product" });
   }
 });
 
@@ -381,7 +390,7 @@ router.patch("/:id", requireOwner, (req, res) => {
       return res.status(400).json({ error: "Validation failed", details: validated.error.format() });
     }
 
-    const { name, price, compare_at_price, description, sizes, stock: stockArr, category, collection, meta_title, meta_description, slug } = validated.data;
+    const { name, price, compare_at_price, description, sizes, stock: stockArr, category, category_id, collection, meta_title, meta_description, slug } = validated.data;
 
     // 1. Existence check
     const existing = db
@@ -396,7 +405,8 @@ router.patch("/:id", requireOwner, (req, res) => {
     if (price) { updates.push("price_paise = ?"); params.push(Math.round(price * 100)); }
     if (compare_at_price !== undefined) { updates.push("compare_at_price_paise = ?"); params.push(compare_at_price ? Math.round(compare_at_price * 100) : null); }
     if (description !== undefined) { updates.push("description = ?"); params.push(description); }
-    if (category) { updates.push("category_id = ?"); params.push(category); }
+    const actualCatId = category || category_id;
+    if (actualCatId) { updates.push("category_id = ?"); params.push(actualCatId); }
     if (collection !== undefined) { updates.push("collection = ?"); params.push(collection); }
     if (meta_title !== undefined) { updates.push("meta_title = ?"); params.push(meta_title); }
     if (meta_description !== undefined) { updates.push("meta_description = ?"); params.push(meta_description); }
