@@ -107,14 +107,14 @@ Critical security, correctness, and production-readiness fixes surfaced by staff
 
 **Goal:** Hash owner password, timing-safe webhook HMAC, enforce webhook secret, add rate limiting to unprotected routes, payment idempotency keys.
 
-**Status:** not-started
+**Status:** planned (2026-05-09)  
+**Plans:** 4 plans
 
-### Plans
-
-- [ ] 06-01: Hash owner password with bcrypt in auth.js; remove plaintext compare
-- [ ] 06-02: Razorpay webhook — use `crypto.timingSafeEqual`, reject if WEBHOOK_SECRET missing
-- [ ] 06-03: Add rate limiting to `/api/customers/signup` and `/api/checkouts`
-- [ ] 06-04: Idempotency key tracking for payments — reject duplicate payment_id inserts
+### Wave 1 (parallel — all independent)
+- [ ] 06-PLAN-01.md — Hash owner password with bcrypt in auth.js; update server.js env validation; document in .env.example
+- [ ] 06-PLAN-02.md — Razorpay webhook: `crypto.timingSafeEqual` + enforce WEBHOOK_SECRET presence (500 not 200 ignored)
+- [ ] 06-PLAN-03.md — Add `checkoutLimiter` (20 req/15min) to `/api/checkouts` mount in server.js
+- [ ] 06-PLAN-04.md — Partial UNIQUE INDEX on orders(razorpay_payment_id); 409 on UNIQUE constraint in verify handler
 
 ---
 
