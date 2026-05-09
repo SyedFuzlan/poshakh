@@ -110,11 +110,17 @@ Critical security, correctness, and production-readiness fixes surfaced by staff
 **Status:** planned (2026-05-09)  
 **Plans:** 4 plans
 
-### Wave 1 (parallel — all independent)
-- [ ] 06-PLAN-01.md — Hash owner password with bcrypt in auth.js; update server.js env validation; document in .env.example
-- [ ] 06-PLAN-02.md — Razorpay webhook: `crypto.timingSafeEqual` + enforce WEBHOOK_SECRET presence (500 not 200 ignored)
+### Wave 1 (parallel)
+- [x] 06-PLAN-01.md — Hash owner password with bcrypt in auth.js; update server.js env validation; document in .env.example
+- [x] 06-PLAN-02.md — Razorpay webhook: `crypto.timingSafeEqual` + enforce WEBHOOK_SECRET presence (500 not 200 ignored)
 - [ ] 06-PLAN-03.md — Add `checkoutLimiter` (20 req/15min) to `/api/checkouts` mount in server.js
+
+### Wave 2 *(blocked on Wave 1 — Plan 02 — completion)*
 - [ ] 06-PLAN-04.md — Partial UNIQUE INDEX on orders(razorpay_payment_id); 409 on UNIQUE constraint in verify handler
+
+**Cross-cutting constraints:**
+- Plans 02 and 04 both modify `backend/routes/payments.js` — Plan 04 must execute after Plan 02
+- Plans 01 and 03 both modify `backend/server.js` — different line regions, execute sequentially within Wave 1
 
 ---
 

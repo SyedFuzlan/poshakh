@@ -19,8 +19,8 @@ progress:
 **plans_total:** 4  
 **plan_of:** 4  
 **last_updated:** 2026-05-09  
-**stopped_at:** Phase 05 complete. Ready for Phase 06 (Security Hardening).  
-**resume_file:** .planning/phases/06-security-hardening/
+**stopped_at:** Phase 06, Plan 02 complete (timing-safe webhook HMAC). Plans 01 and 02 done; Plans 03 and 04 remaining.  
+**resume_file:** .planning/phases/06-security-hardening/06-PLAN-03.md
 
 ---
 
@@ -33,8 +33,15 @@ progress:
 | 03 | End-to-End Test | planned (2026-05-05) — ready for script creation |
 | 04 | Production Deploy | planned (2026-05-05) |
 | 05 | Critical Hotfixes | complete (2026-05-09) |
+| 06 | Security Hardening | planned (2026-05-09) — 4 plans ready |
 
 ---
+
+## Decisions
+
+- **06-02:** Missing RAZORPAY_WEBHOOK_SECRET returns 500 (not 200 ignored) so Razorpay retry surfaces misconfiguration
+- **06-02:** Buffer.from with "hex" encoding on both sides of timingSafeEqual — prevents wrong-length UTF-8 buffers
+- **06-02:** sigBuf.length !== expBuf.length guard precedes crypto.timingSafeEqual() — prevents synchronous throw on malformed signatures
 
 ## Notes
 
