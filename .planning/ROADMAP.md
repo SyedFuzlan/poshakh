@@ -89,17 +89,17 @@ Critical security, correctness, and production-readiness fixes surfaced by staff
 
 **Goal:** Fix all deploy-blocking bugs: priceNum typo crashes product creation, requireOwner skips role check, PII logged in error handlers, promo times_used never incremented.
 
-**Status:** not-started
+**Status:** complete (2026-05-09)
 
-**Plans:** 4 plans
+**Plans:** 4/4 complete
 
 ### Wave 1 (parallel)
-- [ ] 05-PLAN-01.md — Fix priceNum undefined typo (products.js lines 271 and 314)
-- [ ] 05-PLAN-02.md — Add role guard to requireOwner middleware
-- [ ] 05-PLAN-03.md — Add promo_code column to checkouts + increment times_used on checkout creation
+- [x] 05-PLAN-01.md — Fix priceNum undefined typo (products.js lines 271 and 314)
+- [x] 05-PLAN-02.md — Add role guard to requireOwner middleware
+- [x] 05-PLAN-03.md — Add promo_code column to checkouts + increment times_used on checkout creation
 
 ### Wave 2 (after Wave 1)
-- [ ] 05-PLAN-04.md — Sanitize PII in all error handlers (logger.js serializers + generic 500 responses across all routes)
+- [x] 05-PLAN-04.md — Sanitize PII in all error handlers (logger.js serializers + generic 500 responses across all routes)
 
 ---
 
