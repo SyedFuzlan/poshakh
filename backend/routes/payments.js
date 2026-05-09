@@ -222,8 +222,8 @@ router.post("/create-order", async (req, res) => {
       currency: rzpOrder.currency,
     });
   } catch (err) {
-    console.error("POST /api/payments/create-order error:", err);
-    res.status(500).json({ error: err.message || "Failed to create payment order" });
+    logger.error(err, 'POST /api/payments/create-order error');
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 

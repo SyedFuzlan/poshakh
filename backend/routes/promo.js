@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { db } = require('../db');
 const requireOwner = require('../middleware/requireOwner');
+const logger = require('../utils/logger');
 
 // ── Admin Routes ────────────────────────────────────────────────────────────
 
@@ -11,7 +12,8 @@ router.get('/', requireOwner, (req, res) => {
     const codes = db.prepare('SELECT * FROM promo_codes ORDER BY created_at DESC').all();
     res.json(codes);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    logger.error(err, 'GET /api/promo error');
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
@@ -41,7 +43,8 @@ router.post('/', requireOwner, (req, res) => {
     if (err.message.includes('UNIQUE constraint')) {
       return res.status(400).json({ error: 'Promo code already exists' });
     }
-    res.status(500).json({ error: err.message });
+    logger.error(err, 'POST /api/promo error');
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
@@ -56,7 +59,8 @@ router.delete('/:id', requireOwner, (req, res) => {
     });
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    logger.error(err, 'DELETE /api/promo/:id error');
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
@@ -97,7 +101,8 @@ router.post('/validate', (req, res) => {
       value: promo.value
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    logger.error(err, 'POST /api/promo/validate error');
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 

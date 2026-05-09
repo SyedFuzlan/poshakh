@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { db } = require('../db');
 const requireOwner = require('../middleware/requireOwner');
+const logger = require('../utils/logger');
 
 // Get all settings
 router.get('/', (req, res) => {
@@ -11,7 +12,8 @@ router.get('/', (req, res) => {
     rows.forEach(r => { settings[r.key] = r.value; });
     res.json(settings);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    logger.error(err, 'GET /api/site-settings error');
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
@@ -39,7 +41,8 @@ router.post('/', requireOwner, (req, res) => {
 
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    logger.error(err, 'POST /api/site-settings error');
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 

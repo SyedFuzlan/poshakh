@@ -46,7 +46,7 @@ router.post("/categories", requireOwner, (req, res) => {
     res.json({ id: lastInsertRowid, name, slug });
   } catch (err) {
     logger.error(err, "Failed to create category");
-    res.status(500).json({ error: err.message || "Failed to create category" });
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
@@ -378,7 +378,7 @@ router.delete("/:id", requireOwner, (req, res) => {
     res.json({ success: true });
   } catch (err) {
     logger.error(err, "Failed to delete product");
-    res.status(500).json({ error: err.message || "Failed to delete product" });
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
