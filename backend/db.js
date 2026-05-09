@@ -284,6 +284,10 @@ async function initDb() {
   safeMigrate('ALTER TABLE products ADD COLUMN meta_description TEXT');
   safeMigrate('ALTER TABLE order_items ADD COLUMN price_paise INTEGER');
   safeMigrate('ALTER TABLE checkouts ADD COLUMN promo_code TEXT');
+  safeMigrate(
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_razorpay_payment_id ' +
+    'ON orders(razorpay_payment_id) WHERE razorpay_payment_id IS NOT NULL'
+  );
 
   // Create default category if none exists
   try {
