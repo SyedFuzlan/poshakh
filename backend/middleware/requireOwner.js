@@ -17,6 +17,9 @@ function requireOwner(req, res, next) {
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     req.owner = payload;
+    if (payload.role !== 'owner') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
     next();
   } catch {
     return res.status(401).json({ error: "Invalid or expired token" });
