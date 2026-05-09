@@ -15,7 +15,7 @@ const { initDb, db } = require("./db");
 const logger = require("./utils/logger");
 
 // ── Env validation ──────────────────────────────
-const required = ["OWNER_EMAIL", "OWNER_PASSWORD", "JWT_SECRET"];
+const required = ["OWNER_EMAIL", "OWNER_PASSWORD_HASH", "JWT_SECRET"];
 const missing = required.filter((k) => !process.env[k]);
 if (missing.length > 0) {
   console.error(`❌  Missing required env vars: ${missing.join(", ")}`);
