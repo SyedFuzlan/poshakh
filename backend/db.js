@@ -283,7 +283,8 @@ async function initDb() {
   safeMigrate('ALTER TABLE products ADD COLUMN meta_title TEXT');
   safeMigrate('ALTER TABLE products ADD COLUMN meta_description TEXT');
   safeMigrate('ALTER TABLE order_items ADD COLUMN price_paise INTEGER');
-  
+  safeMigrate('ALTER TABLE checkouts ADD COLUMN promo_code TEXT');
+
   // Create default category if none exists
   try {
     const cat = _db.prepare("SELECT id FROM categories LIMIT 1").step();

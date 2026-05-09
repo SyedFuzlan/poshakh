@@ -10,23 +10,30 @@ const router = express.Router();
  */
 router.post('/', (req, res) => {
   try {
-    const { id, customer_name, customer_phone, customer_email, items_json, total_paise } = req.body;
+    const { id, customer_name, customer_phone, customer_email, items_json, total_paise, promo_code } = req.body;
 
     if (!id || !customer_phone) {
       return res.status(400).json({ error: 'Checkout ID and phone are required' });
     }
 
     db.prepare(`
-      INSERT INTO checkouts (id, customer_name, customer_phone, customer_email, items_json, total_paise, status, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, 'pending', (strftime('%Y-%m-%dT%H:%M:%SZ','now')))
+      INSERT INTO checkouts (id, customer_name, customer_phone, customer_email, items_json, total_paise, promo_code, status, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', (strftime('%Y-%m-%dT%H:%M:%SZ','now')))
       ON CONFLICT(id) DO UPDATE SET
         customer_name = excluded.customer_name,
         customer_phone = excluded.customer_phone,
         customer_email = excluded.customer_email,
         items_json = excluded.items_json,
         total_paise = excluded.total_paise,
+        promo_code = excluded.promo_code,
         updated_at = (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
-    `).run(id, customer_name, customer_phone, customer_email, items_json, total_paise);
+    `).run(id, customer_name, customer_phone, customer_email, items_json, total_paise, promo_code ? promo_code.toUpperCase() : null);
+
+    if (promo_code) {
+      db.prepare(
+        'UPDATE promo_codes SET times_used = times_used + 1 WHERE code = ? AND is_active = 1'
+      ).run(promo_code.toUpperCase());
+    }
 
     res.status(201).json({ success: true });
   } catch (err) {
