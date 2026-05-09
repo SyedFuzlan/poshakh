@@ -48,6 +48,14 @@ const authLimiter = rateLimit({
   message: { error: "Too many login attempts, please try again later." }
 });
 
+const checkoutLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,  // 15 minutes
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, please try again later." },
+});
+
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -97,7 +105,7 @@ app.use("/api/payments", apiLimiter, require("./routes/payments").router);
 app.use("/api/promo", require("./routes/promo"));
 app.use("/api/settings", require("./routes/site-settings"));
 const { router: checkoutRouter, runRecoveryTask } = require("./routes/checkouts");
-app.use("/api/checkouts", checkoutRouter);
+app.use("/api/checkouts", checkoutLimiter, checkoutRouter);
 
 // Health check
 app.get("/", (_req, res) => {
