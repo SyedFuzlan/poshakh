@@ -107,8 +107,8 @@ Critical security, correctness, and production-readiness fixes surfaced by staff
 
 **Goal:** Hash owner password, timing-safe webhook HMAC, enforce webhook secret, add rate limiting to unprotected routes, payment idempotency keys.
 
-**Status:** planned (2026-05-09)  
-**Plans:** 4 plans
+**Status:** complete (2026-05-09)  
+**Plans:** 4/4 complete
 
 ### Wave 1 (parallel)
 - [x] 06-PLAN-01.md — Hash owner password with bcrypt in auth.js; update server.js env validation; document in .env.example
@@ -116,7 +116,7 @@ Critical security, correctness, and production-readiness fixes surfaced by staff
 - [x] 06-PLAN-03.md — Add `checkoutLimiter` (20 req/15min) to `/api/checkouts` mount in server.js
 
 ### Wave 2 *(blocked on Wave 1 — Plan 02 — completion)*
-- [ ] 06-PLAN-04.md — Partial UNIQUE INDEX on orders(razorpay_payment_id); 409 on UNIQUE constraint in verify handler
+- [x] 06-PLAN-04.md — Partial UNIQUE INDEX on orders(razorpay_payment_id); 409 on UNIQUE constraint in verify handler
 
 **Cross-cutting constraints:**
 - Plans 02 and 04 both modify `backend/routes/payments.js` — Plan 04 must execute after Plan 02

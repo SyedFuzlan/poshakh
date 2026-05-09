@@ -18,9 +18,9 @@ progress:
 **progress:** 5  
 **plans_total:** 4  
 **plan_of:** 4  
-**last_updated:** 2026-05-09T14:30:00Z  
-**stopped_at:** Phase 06, Plan 03 complete (checkout rate limiter). Plans 01, 02, and 03 done; Plan 04 remaining.  
-**resume_file:** .planning/phases/06-security-hardening/06-PLAN-04.md
+**last_updated:** 2026-05-09T15:00:00Z  
+**stopped_at:** Phase 06 complete — all 4 plans done (bcrypt password, webhook HMAC, checkout limiter, payment idempotency).  
+**resume_file:** None — Phase 06 fully complete. Next: Phase 07 Auth Improvements or Phase 08 PostgreSQL Migration.
 
 ---
 
@@ -33,7 +33,7 @@ progress:
 | 03 | End-to-End Test | planned (2026-05-05) — ready for script creation |
 | 04 | Production Deploy | planned (2026-05-05) |
 | 05 | Critical Hotfixes | complete (2026-05-09) |
-| 06 | Security Hardening | planned (2026-05-09) — 4 plans ready |
+| 06 | Security Hardening | complete (2026-05-09) |
 
 ---
 
@@ -44,6 +44,8 @@ progress:
 - **06-02:** sigBuf.length !== expBuf.length guard precedes crypto.timingSafeEqual() — prevents synchronous throw on malformed signatures
 - **06-03:** checkoutLimiter set to 20/15min (not 100 like apiLimiter) — /api/checkouts accepts unauthenticated writes, 20 blocks enumeration while fitting legitimate cart-update behavior
 - **06-03:** checkoutLimiter applied only to /api/checkouts; /api/payments webhook mount unchanged (uses apiLimiter at 100/15min)
+- **06-04:** Partial index (WHERE razorpay_payment_id IS NOT NULL) lets UPI/COD orders retain multiple NULL rows
+- **06-04:** 409 matched to exact SQLite error string "UNIQUE constraint failed: orders.razorpay_payment_id" — not a broad UNIQUE catch
 
 ## Notes
 
