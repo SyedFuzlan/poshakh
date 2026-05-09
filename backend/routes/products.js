@@ -268,7 +268,7 @@ router.post(
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         ).run(
           name.trim(),
-          Math.round(priceNum * 100),
+          Math.round(price * 100),
           compare_at_price ? Math.round(parseFloat(compare_at_price) * 100) : null,
           "", // legacy category column
           catId,
@@ -311,7 +311,7 @@ router.post(
       db.logAudit({
         action: 'PRODUCT_CREATE',
         details: `Created product: ${name.trim()}`,
-        newValue: { name: name.trim(), price: priceNum, stock: totalStock }
+        newValue: { name: name.trim(), price: price, stock: totalStock }
       });
 
       const newRows = db.prepare(`
