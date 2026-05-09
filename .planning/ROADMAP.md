@@ -113,7 +113,7 @@ Critical security, correctness, and production-readiness fixes surfaced by staff
 ### Wave 1 (parallel)
 - [x] 06-PLAN-01.md — Hash owner password with bcrypt in auth.js; update server.js env validation; document in .env.example
 - [x] 06-PLAN-02.md — Razorpay webhook: `crypto.timingSafeEqual` + enforce WEBHOOK_SECRET presence (500 not 200 ignored)
-- [ ] 06-PLAN-03.md — Add `checkoutLimiter` (20 req/15min) to `/api/checkouts` mount in server.js
+- [x] 06-PLAN-03.md — Add `checkoutLimiter` (20 req/15min) to `/api/checkouts` mount in server.js
 
 ### Wave 2 *(blocked on Wave 1 — Plan 02 — completion)*
 - [ ] 06-PLAN-04.md — Partial UNIQUE INDEX on orders(razorpay_payment_id); 409 on UNIQUE constraint in verify handler

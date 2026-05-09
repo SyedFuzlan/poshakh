@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: active
-last_updated: "2026-05-08T21:43:18.217Z"
+last_updated: "2026-05-09T09:02:01.663Z"
 progress:
-  total_phases: 5
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
-  completed_plans: 5
+  completed_plans: 12
 ---
 
 # STATE — Poshakh
@@ -18,9 +18,9 @@ progress:
 **progress:** 5  
 **plans_total:** 4  
 **plan_of:** 4  
-**last_updated:** 2026-05-09  
-**stopped_at:** Phase 06, Plan 02 complete (timing-safe webhook HMAC). Plans 01 and 02 done; Plans 03 and 04 remaining.  
-**resume_file:** .planning/phases/06-security-hardening/06-PLAN-03.md
+**last_updated:** 2026-05-09T14:30:00Z  
+**stopped_at:** Phase 06, Plan 03 complete (checkout rate limiter). Plans 01, 02, and 03 done; Plan 04 remaining.  
+**resume_file:** .planning/phases/06-security-hardening/06-PLAN-04.md
 
 ---
 
@@ -42,6 +42,8 @@ progress:
 - **06-02:** Missing RAZORPAY_WEBHOOK_SECRET returns 500 (not 200 ignored) so Razorpay retry surfaces misconfiguration
 - **06-02:** Buffer.from with "hex" encoding on both sides of timingSafeEqual — prevents wrong-length UTF-8 buffers
 - **06-02:** sigBuf.length !== expBuf.length guard precedes crypto.timingSafeEqual() — prevents synchronous throw on malformed signatures
+- **06-03:** checkoutLimiter set to 20/15min (not 100 like apiLimiter) — /api/checkouts accepts unauthenticated writes, 20 blocks enumeration while fitting legitimate cart-update behavior
+- **06-03:** checkoutLimiter applied only to /api/checkouts; /api/payments webhook mount unchanged (uses apiLimiter at 100/15min)
 
 ## Notes
 
