@@ -326,17 +326,28 @@ router.post(
     try {
       const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
       if (!webhookSecret) {
-        console.warn("RAZORPAY_WEBHOOK_SECRET not set — skipping webhook verification");
-        return res.status(200).json({ status: "ignored" });
+        logger.error("RAZORPAY_WEBHOOK_SECRET not configured — rejecting webhook");
+        return res.status(500).json({ error: "Webhook not configured" });
       }
 
       const signature = req.headers["x-razorpay-signature"];
+      if (!signature) {
+        return res.status(400).json({ error: "Missing signature header" });
+      }
+
       const expectedSig = crypto
         .createHmac("sha256", webhookSecret)
         .update(req.body)
         .digest("hex");
 
-      if (signature !== expectedSig) {
+      // Buffer.from MUST use 'hex' encoding — without it, Buffer.from(hexStr) creates
+      // a UTF-8 buffer (wrong length), causing timingSafeEqual to throw or always fail.
+      const sigBuf = Buffer.from(signature,   "hex");
+      const expBuf = Buffer.from(expectedSig, "hex");
+
+      // Length check MUST precede timingSafeEqual — the function throws
+      // ERR_CRYPTO_TIMING_SAFE_EQUAL_LENGTH if buffers have different lengths.
+      if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
         return res.status(400).json({ error: "Invalid webhook signature" });
       }
 
@@ -354,14 +365,14 @@ router.post(
               "UPDATE orders SET status = 'paid' WHERE id = ? AND status = 'pending_verification'"
             ).run(existing.id);
           } else {
-            console.error(`⚠️  Orphaned payment ${payment.id} — not in orders DB.`);
+            logger.error({ paymentId: payment.id }, "Orphaned payment — not in orders DB");
           }
         }
       }
 
       res.json({ status: "ok" });
     } catch (err) {
-      console.error("Webhook error:", err);
+      logger.error({ err }, "Webhook error");
       res.status(500).json({ error: "Webhook processing failed" });
     }
   }

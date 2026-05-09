@@ -223,12 +223,13 @@ test("Source uses crypto.timingSafeEqual (not string === comparison)", () => {
     hexMatches >= 2,
     `Expected at least 2 Buffer.from(..., "hex") calls, found ${hexMatches}`
   );
-  // Length guard must precede timingSafeEqual
+  // Length guard must precede the crypto.timingSafeEqual( call (not comment mentions)
   const lengthGuardIdx = src.indexOf("sigBuf.length !== expBuf.length");
-  const tseIdx         = src.indexOf("timingSafeEqual");
+  // Find the actual function call, not comment mentions — look for "crypto.timingSafeEqual("
+  const tseCallIdx     = src.indexOf("crypto.timingSafeEqual(");
   assert.ok(
-    lengthGuardIdx !== -1 && lengthGuardIdx < tseIdx,
-    "Length guard must appear before timingSafeEqual call"
+    lengthGuardIdx !== -1 && tseCallIdx !== -1 && lengthGuardIdx < tseCallIdx,
+    `Length guard (${lengthGuardIdx}) must appear before crypto.timingSafeEqual( call (${tseCallIdx})`
   );
 });
 
