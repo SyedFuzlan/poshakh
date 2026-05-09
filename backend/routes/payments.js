@@ -276,7 +276,11 @@ router.post("/verify", async (req, res) => {
     console.log(`✅ Order saved: ${orderId} | Payment: ${razorpay_payment_id}`);
     res.json({ success: true, order_id: orderId });
   } catch (err) {
-    console.error("POST /api/payments/verify error:", err);
+    // UNIQUE constraint error = concurrent duplicate payment attempt
+    if (err && String(err.message).includes("UNIQUE constraint failed: orders.razorpay_payment_id")) {
+      return res.status(409).json({ success: false, error: "Duplicate payment — order already exists" });
+    }
+    logger.error({ err }, "POST /api/payments/verify error");
     res.status(500).json({ success: false, error: "Failed to verify payment" });
   }
 });
