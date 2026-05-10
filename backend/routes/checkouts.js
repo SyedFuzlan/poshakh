@@ -29,11 +29,10 @@ router.post('/', async (req, res) => {
         updated_at = NOW()
     `).run(id, customer_name, customer_phone, customer_email, items_json, total_paise, promo_code ? promo_code.toUpperCase() : null);
 
-    if (promo_code) {
-      await db.prepare(
-        'UPDATE promo_codes SET times_used = times_used + 1 WHERE code = $1 AND is_active = 1'
-      ).run(promo_code.toUpperCase());
-    }
+    // NOTE: times_used is intentionally NOT incremented here. Checkout intents
+    // are often abandoned and may be upserted multiple times for the same id.
+    // Incrementing on order confirmation (payments/orders flow) prevents promo
+    // codes from being consumed prematurely by abandoned carts.
 
     res.status(201).json({ success: true });
   } catch (err) {
