@@ -442,21 +442,8 @@ let token = localStorage.getItem('poshakh_owner_token') || '';
 let allOrders = [];
 let currentFilter = 'all';
 
-// ── Init ──────────────────────────────────────────────
-window.onload = async () => {
-  if (token) {
-    try {
-      const r = await apiFetch('/api/auth/verify', 'POST');
-      if (r.valid) { showApp(r.email); return; }
-    } catch {}
-    token = '';
-    localStorage.removeItem('poshakh_owner_token');
-  }
-  document.getElementById('login-screen').style.display = 'flex';
-};
-
-// ── Auth ──────────────────────────────────────────────
-async function login() {
+// Explicitly export login to window to avoid ReferenceError
+window.login = async function login() {
   const btn = document.querySelector('.btn-login');
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
@@ -483,7 +470,23 @@ async function login() {
     btn.textContent = originalText;
     btn.disabled = false;
   }
-}
+};
+
+// ── Init ──────────────────────────────────────────────
+window.onload = async () => {
+  if (token) {
+    try {
+      const r = await apiFetch('/api/auth/verify', 'POST');
+      if (r.valid) { showApp(r.email); return; }
+    } catch {}
+    token = '';
+    localStorage.removeItem('poshakh_owner_token');
+  }
+  document.getElementById('login-screen').style.display = 'flex';
+};
+
+// ── Auth ──────────────────────────────────────────────
+// The login function is now defined above and attached to window
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && document.getElementById('login-screen').style.display !== 'none') login();
 });
@@ -747,6 +750,12 @@ async function updateOrderStatus(id, status, extra = {}) {
     loadStats();
   } catch(e) {
     alert('Failed to update order: ' + e.message);
+  }
+}
+
+async function markShipped(id, btn) {
+  if (confirm('Verify and mark this order as shipped?')) {
+    updateOrderStatus(id, 'shipped');
   }
 }
 
