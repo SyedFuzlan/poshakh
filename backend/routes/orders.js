@@ -15,7 +15,9 @@ const { generateInvoiceHTML } = require("../utils/invoice");
 
 // ── POST /api/orders ─────────────────────────────
 // Public endpoint to place a COD order (Guest or Logged-in)
-router.post("/", (req, res) => {
+// ── POST /api/orders ─────────────────────────────
+// Public endpoint to place a COD order (Guest or Logged-in)
+router.post("/", async (req, res) => {
   try {
     const { order_data } = req.body;
 
@@ -25,7 +27,7 @@ router.post("/", (req, res) => {
     }
 
     const orderId = generateOrderId();
-    saveOrder({
+    await saveOrder({
       orderId,
       paymentMethod: "COD",
       razorpayPaymentId: null,
@@ -115,10 +117,11 @@ function formatOrder(row) {
 
 // ── GET /api/orders/stats ────────────────────────
 // Must be before /:id to avoid route conflict
-router.get("/stats", requireOwner, (req, res) => {
+// ── GET /api/orders/stats ────────────────────────
+// Must be before /:id to avoid route conflict
+router.get("/stats", requireOwner, async (req, res) => {
   try {
-    // IST offset is +5:30. SQLite stores UTC; we adjust the date boundary.
-    // "today in IST" starts at previous day 18:30 UTC (IST midnight = UTC 18:30)
+    // IST offset is +5:30.
     const now = new Date();
     const istOffset = 5.5 * 60 * 60 * 1000; // 5h30m in ms
     const istNow = new Date(now.getTime() + istOffset);
@@ -132,44 +135,36 @@ router.get("/stats", requireOwner, (req, res) => {
     );
     const utcStart = new Date(istMidnight.getTime() - istOffset).toISOString();
 
-    const todayOrders = db
+    const todayOrders = await db
       .prepare(
         `SELECT COUNT(*) as count, SUM(total_paise) as revenue
          FROM orders
-         WHERE created_at >= ? AND status != 'cancelled'`
+         WHERE created_at >= $1 AND status != 'cancelled'`
       )
       .get(utcStart);
 
-    const totalOrders = db
+    const totalOrders = await db
       .prepare("SELECT COUNT(*) as count FROM orders WHERE status != 'cancelled'")
       .get();
       
-    const lowStockCount = db
+    const lowStockCount = await db
       .prepare("SELECT COUNT(*) as count FROM product_variants WHERE stock > 0 AND stock <= 3")
       .get();
 
-    const pendingProcessing = db
+    const pendingProcessing = await db
       .prepare(
         "SELECT COUNT(*) as count FROM orders WHERE status = 'paid' OR (status = 'pending' AND payment_method = 'COD')"
       )
       .get();
 
-    const pendingShipment = db
-      .prepare("SELECT COUNT(*) as count FROM orders WHERE status = 'shipped'") // Should this be 'shipped'? Usually 'pending_shipment' means ready but not yet shipped.
-      // Actually, let's follow the existing logic:
-      // status = 'paid' or 'COD pending' -> pending processing
-      // status = 'shipped' -> out for delivery? 
-      // Let's just define it to avoid crashes.
-      .get();
-
     res.json({
-      today_orders: todayOrders.count || 0,
-      today_revenue_paise: todayOrders.revenue || 0,
+      today_orders: parseInt(todayOrders.count || 0, 10),
+      today_revenue_paise: parseInt(todayOrders.revenue || 0, 10),
       today_revenue_formatted: formatINR(todayOrders.revenue || 0),
-      total_orders: totalOrders.count || 0,
-      pending_shipment: pendingProcessing.count || 0, // Using processing count as 'pending shipment' for now
-      pending_processing: pendingProcessing.count || 0,
-      low_stock_count: lowStockCount.count || 0
+      total_orders: parseInt(totalOrders.count || 0, 10),
+      pending_shipment: parseInt(pendingProcessing.count || 0, 10),
+      pending_processing: parseInt(pendingProcessing.count || 0, 10),
+      low_stock_count: parseInt(lowStockCount.count || 0, 10)
     });
   } catch (err) {
     console.error("GET /api/orders/stats error:", err);
@@ -178,14 +173,14 @@ router.get("/stats", requireOwner, (req, res) => {
 });
 
 // ── GET /api/orders/export/csv ──────────────────
-router.get("/export/csv", requireOwner, (req, res) => {
+router.get("/export/csv", requireOwner, async (req, res) => {
   try {
-    const rows = db.prepare("SELECT * FROM orders ORDER BY created_at DESC").all();
+    const rows = await db.prepare("SELECT * FROM orders ORDER BY created_at DESC").all();
     
     let csv = "Order ID,Date (IST),Customer,Phone,Status,Method,Total (INR),Items\n";
     
     rows.forEach(row => {
-      const date = toIST(row.created_at).replace(/,/g, "");
+      const date = (toIST(row.created_at) || "").replace(/,/g, "");
       const items = JSON.parse(row.items_json).map(i => `${i.name}(${i.size})x${i.quantity}`).join("; ");
       const line = [
         row.id,
@@ -209,7 +204,7 @@ router.get("/export/csv", requireOwner, (req, res) => {
 });
 
 // ── GET /api/orders ──────────────────────────────
-router.get("/", requireOwner, (req, res) => {
+router.get("/", requireOwner, async (req, res) => {
   try {
     const { status, q, limit = 100, offset = 0 } = req.query;
     let rows;
@@ -219,24 +214,24 @@ router.get("/", requireOwner, (req, res) => {
     let where = [];
 
     if (status) {
-      where.push("status = ?");
       params.push(status);
+      where.push(`status = $${params.length}`);
     }
     
     if (q) {
-      where.push("(customer_name LIKE ? OR customer_phone LIKE ? OR id LIKE ?)");
       const term = `%${q}%`;
       params.push(term, term, term);
+      where.push(`(customer_name LIKE $${params.length - 2} OR customer_phone LIKE $${params.length - 1} OR id LIKE $${params.length})`);
     }
 
     if (where.length > 0) {
       sql += " WHERE " + where.join(" AND ");
     }
 
-    sql += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
+    sql += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
     params.push(Number(limit), Number(offset));
 
-    rows = db.prepare(sql).all(...params);
+    rows = await db.prepare(sql).all(...params);
 
     res.json({ orders: rows.map(formatOrder) });
   } catch (err) {
@@ -247,35 +242,35 @@ router.get("/", requireOwner, (req, res) => {
 
 // ── PATCH /api/orders/:id ───────────────────────
 // General purpose update (Admin only)
-router.patch("/:id", requireOwner, (req, res) => {
+router.patch("/:id", requireOwner, async (req, res) => {
   try {
     const { id } = req.params;
     const { status, courier_name, tracking_number } = req.body;
     
-    const row = db.prepare("SELECT * FROM orders WHERE id = ?").get(id);
+    const row = await db.prepare("SELECT * FROM orders WHERE id = $1").get(id);
     if (!row) return res.status(404).json({ error: "Order not found" });
 
     const updates = [];
     const params = [];
 
     if (status) {
-      updates.push("status = ?");
       params.push(status);
+      updates.push(`status = $${params.length}`);
       
       // Auto-set shipped_at if status becomes 'shipped'
       if (status === 'shipped' && !row.shipped_at) {
-        updates.push("shipped_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')");
+        updates.push("shipped_at = NOW()");
       }
     }
     
     if (courier_name !== undefined) {
-      updates.push("courier_name = ?");
       params.push(courier_name);
+      updates.push(`courier_name = $${params.length}`);
     }
     
     if (tracking_number !== undefined) {
-      updates.push("tracking_number = ?");
       params.push(tracking_number);
+      updates.push(`tracking_number = $${params.length}`);
     }
 
     if (updates.length === 0) {
@@ -283,38 +278,47 @@ router.patch("/:id", requireOwner, (req, res) => {
     }
 
     params.push(id);
+    const updateSql = `UPDATE orders SET ${updates.join(", ")} WHERE id = $${params.length}`;
     
     // Use transaction for status changes that involve inventory (Cancellations)
-    db.transaction(() => {
-      db.prepare(`UPDATE orders SET ${updates.join(", ")} WHERE id = ?`).run(...params);
+    await db.transaction(async (client) => {
+      await client.query(updateSql, params);
 
       // Record status history
       if (status) {
-        db.prepare(`INSERT INTO order_status_history (order_id, status, admin_id) VALUES (?, ?, ?)`).run(
-          id, status, req.owner?.id || req.owner?.email
+        await client.query(
+          `INSERT INTO order_status_history (order_id, status, admin_id) VALUES ($1, $2, $3)`,
+          [id, status, req.owner?.id || req.owner?.email]
         );
       }
 
       // Handle Restocking on Cancellation
       if (status === 'cancelled' && row.status !== 'cancelled') {
         const items = JSON.parse(row.items_json || '[]');
-        items.forEach(item => {
+        for (const item of items) {
           if (item.product_id && item.size) {
             const qty = parseInt(item.quantity || 1, 10);
-            db.prepare(`UPDATE product_variants SET stock = stock + ? WHERE product_id = ? AND size = ?`)
-              .run(qty, item.product_id, item.size);
+            await client.query(
+              `UPDATE product_variants SET stock = stock + $1 WHERE product_id = $2 AND size = $3`,
+              [qty, item.product_id, item.size]
+            );
 
             // Log inventory restock
-            const variant = db.prepare(`SELECT id FROM product_variants WHERE product_id = ? AND size = ?`).get(item.product_id, item.size);
+            const resVariant = await client.query(
+              `SELECT id FROM product_variants WHERE product_id = $1 AND size = $2`,
+              [item.product_id, item.size]
+            );
+            const variant = resVariant.rows[0];
             if (variant) {
-              db.prepare(`INSERT INTO inventory_logs (variant_id, change, reason, order_id, admin_id) VALUES (?, ?, ?, ?, ?)`).run(
-                variant.id, qty, 'cancellation_restock', id, req.owner?.id || req.owner?.email
+              await client.query(
+                `INSERT INTO inventory_logs (variant_id, change, reason, order_id, admin_id) VALUES ($1, $2, $3, $4, $5)`,
+                [variant.id, qty, 'cancellation_restock', id, req.owner?.id || req.owner?.email]
               );
             }
           }
-        });
+        }
       }
-    })();
+    });
 
     // Post-update actions (Notifications)
     if (status === 'shipped') {
@@ -331,7 +335,7 @@ router.patch("/:id", requireOwner, (req, res) => {
       newValue: req.body
     });
 
-    const updated = db.prepare("SELECT * FROM orders WHERE id = ?").get(id);
+    const updated = await db.prepare("SELECT * FROM orders WHERE id = $1").get(id);
     res.json({ order: formatOrder(updated) });
   } catch (err) {
     console.error("PATCH /api/orders error:", err);
@@ -340,9 +344,9 @@ router.patch("/:id", requireOwner, (req, res) => {
 });
 
 // ── GET /api/orders/:id/invoice (owner only) ────
-router.get("/:id/invoice", requireOwner, (req, res) => {
+router.get("/:id/invoice", requireOwner, async (req, res) => {
   try {
-    const row = db.prepare("SELECT * FROM orders WHERE id = ?").get(req.params.id);
+    const row = await db.prepare("SELECT * FROM orders WHERE id = $1").get(req.params.id);
     if (!row) return res.status(404).send("Order not found");
     
     const order = formatOrder(row);
@@ -354,11 +358,11 @@ router.get("/:id/invoice", requireOwner, (req, res) => {
 });
 
 // ── GET /api/orders/:id/history (owner only) ────
-router.get("/:id/history", requireOwner, (req, res) => {
+router.get("/:id/history", requireOwner, async (req, res) => {
   try {
-    const rows = db.prepare(`
+    const rows = await db.prepare(`
       SELECT * FROM order_status_history 
-      WHERE order_id = ? 
+      WHERE order_id = $1 
       ORDER BY created_at DESC
     `).all(req.params.id);
     res.json(rows);
@@ -368,31 +372,31 @@ router.get("/:id/history", requireOwner, (req, res) => {
 });
 
 // ── GET /api/orders/reports (owner only) ────────
-router.get("/reports", requireOwner, (req, res) => {
+router.get("/reports", requireOwner, async (req, res) => {
   try {
-    const dailyRevenue = db.prepare(`
-      SELECT date(created_at) as date, SUM(total_paise) as revenue 
+    const dailyRevenue = await db.prepare(`
+      SELECT DATE(created_at) as date, SUM(total_paise) as revenue 
       FROM orders 
       WHERE status != 'cancelled'
-      GROUP BY date(created_at) 
+      GROUP BY DATE(created_at) 
       ORDER BY date ASC 
       LIMIT 30
     `).all();
 
-    const categorySales = db.prepare(`
+    const categorySales = await db.prepare(`
       SELECT c.name as category, SUM(oi.quantity) as count, SUM(oi.price_paise * oi.quantity) as revenue
       FROM order_items oi
       JOIN products p ON oi.product_id = p.id
       JOIN categories c ON p.category_id = c.id
       JOIN orders o ON oi.order_id = o.id
       WHERE o.status != 'cancelled'
-      GROUP BY c.id
+      GROUP BY c.id, c.name
     `).all();
 
-    const topProducts = db.prepare(`
+    const topProducts = await db.prepare(`
       SELECT name, SUM(quantity) as sold
       FROM order_items
-      GROUP BY product_id
+      GROUP BY name
       ORDER BY sold DESC
       LIMIT 10
     `).all();
@@ -403,6 +407,7 @@ router.get("/reports", requireOwner, (req, res) => {
       topProducts
     });
   } catch (err) {
+    console.error("GET /api/orders/reports error:", err);
     res.status(500).json({ error: "Failed to generate report" });
   }
 });

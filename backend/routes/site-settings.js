@@ -5,9 +5,9 @@ const requireOwner = require('../middleware/requireOwner');
 const logger = require('../utils/logger');
 
 // Get all settings
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const rows = db.prepare('SELECT * FROM site_settings').all();
+    const rows = await db.prepare('SELECT * FROM site_settings').all();
     const settings = {};
     rows.forEach(r => { settings[r.key] = r.value; });
     res.json(settings);
@@ -18,7 +18,7 @@ router.get('/', (req, res) => {
 });
 
 // Update a setting
-router.post('/', requireOwner, (req, res) => {
+router.post('/', requireOwner, async (req, res) => {
   const { key, value } = req.body;
   
   if (!key || value === undefined) {
@@ -26,10 +26,10 @@ router.post('/', requireOwner, (req, res) => {
   }
 
   try {
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO site_settings (key, value)
-      VALUES (?, ?)
-      ON CONFLICT(key) DO UPDATE SET value = excluded.value
+      VALUES ($1, $2)
+      ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value
     `).run(key, value);
 
     db.logAudit({

@@ -84,9 +84,13 @@ function getDb() {
   return pool;
 }
 
+async function close() {
+  await pool.end();
+}
+
 module.exports = {
   initDb,
   saveDb,
   getDb,
-  db: { prepare, transaction, logAudit, query, pool },
+  db: { prepare, transaction, logAudit, query, pool, close },
 };

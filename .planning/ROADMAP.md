@@ -151,15 +151,15 @@ Critical security, correctness, and production-readiness fixes surfaced by staff
 
 **Goal:** Replace sql.js (SQLite in-memory) with PostgreSQL + pg-pool. Add migration system, indexes, parameterized queries, DB transactions for payment flow.
 
-**Status:** not-started
+**Status:** complete (2026-05-10)
 
 ### Plans
 
-- [ ] 08-01: Install pg, pg-pool; rewrite db.js connection layer
-- [ ] 08-02: Migrate all CREATE TABLE statements to db-migrate migration files
-- [ ] 08-03: Add indexes on customers(phone, email), orders(status), products(category)
-- [ ] 08-04: Wrap payment create+inventory deduction in DB transaction
-- [ ] 08-05: Fix all dynamic WHERE string concatenations to parameterized queries
+- [x] 08-01: Install pg, pg-pool; rewrite db.js connection layer
+- [x] 08-02: Migrate all CREATE TABLE statements to db-migrate migration files
+- [x] 08-03: Add indexes on customers(phone, email), orders(status), products(category)
+- [x] 08-04: Wrap payment create+inventory deduction in DB transaction
+- [x] 08-05: Fix all dynamic WHERE string concatenations to parameterized queries
 
 ---
 
@@ -180,7 +180,7 @@ Critical security, correctness, and production-readiness fixes surfaced by staff
 
 **Goal:** Soft deletes, return/refund flow, webhook retry idempotency, API versioning (/api/v1/).
 
-**Status:** not-started
+**Status:** planned (2026-05-10)  
 
 ### Plans
 

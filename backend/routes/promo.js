@@ -7,9 +7,9 @@ const logger = require('../utils/logger');
 // ── Admin Routes ────────────────────────────────────────────────────────────
 
 // List all promo codes
-router.get('/', requireOwner, (req, res) => {
+router.get('/', requireOwner, async (req, res) => {
   try {
-    const codes = db.prepare('SELECT * FROM promo_codes ORDER BY created_at DESC').all();
+    const codes = await db.prepare('SELECT * FROM promo_codes ORDER BY created_at DESC').all();
     res.json(codes);
   } catch (err) {
     logger.error(err, 'GET /api/promo error');
@@ -18,7 +18,7 @@ router.get('/', requireOwner, (req, res) => {
 });
 
 // Create new promo code
-router.post('/', requireOwner, (req, res) => {
+router.post('/', requireOwner, async (req, res) => {
   const { code, type, value, min_purchase_paise, expiry_date, usage_limit } = req.body;
   
   if (!code || !type || value === undefined) {
@@ -26,9 +26,10 @@ router.post('/', requireOwner, (req, res) => {
   }
 
   try {
-    const result = db.prepare(`
+    const result = await db.prepare(`
       INSERT INTO promo_codes (code, type, value, min_purchase_paise, expiry_date, usage_limit)
-      VALUES (?, ?, ?, ?, ?, ?)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id
     `).run(code.toUpperCase(), type, value, min_purchase_paise || 0, expiry_date || null, usage_limit || 0);
 
     db.logAudit({
@@ -40,7 +41,7 @@ router.post('/', requireOwner, (req, res) => {
 
     res.json({ success: true, id: result.lastInsertRowid });
   } catch (err) {
-    if (err.message.includes('UNIQUE constraint')) {
+    if (err.message.includes('unique constraint') || err.code === '23505') {
       return res.status(400).json({ error: 'Promo code already exists' });
     }
     logger.error(err, 'POST /api/promo error');
@@ -49,9 +50,9 @@ router.post('/', requireOwner, (req, res) => {
 });
 
 // Delete promo code
-router.delete('/:id', requireOwner, (req, res) => {
+router.delete('/:id', requireOwner, async (req, res) => {
   try {
-    db.prepare('DELETE FROM promo_codes WHERE id = ?').run(req.params.id);
+    await db.prepare('DELETE FROM promo_codes WHERE id = $1').run(req.params.id);
     db.logAudit({
       adminId: req.owner.email,
       action: 'DELETE_PROMO_CODE',
@@ -67,13 +68,13 @@ router.delete('/:id', requireOwner, (req, res) => {
 // ── Public Routes ───────────────────────────────────────────────────────────
 
 // Validate a promo code
-router.post('/validate', (req, res) => {
+router.post('/validate', async (req, res) => {
   const { code, cart_total_paise } = req.body;
   
   if (!code) return res.status(400).json({ error: 'Code is required' });
 
   try {
-    const promo = db.prepare('SELECT * FROM promo_codes WHERE code = ? AND is_active = 1').get(code.toUpperCase());
+    const promo = await db.prepare('SELECT * FROM promo_codes WHERE code = $1 AND is_active = 1').get(code.toUpperCase());
 
     if (!promo) return res.status(404).json({ error: 'Invalid or inactive promo code' });
 
