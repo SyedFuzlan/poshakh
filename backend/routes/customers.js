@@ -13,7 +13,7 @@ const crypto = require("crypto");
 const db = require("../db").db;
 const requireCustomer = require("../middleware/requireCustomer");
 const logger = require('../utils/logger');
-const { sendVerificationEmail } = require('../utils/email');
+const { sendVerificationEmail, sendPasswordResetEmail } = require('../utils/email');
 
 const router = express.Router();
 
@@ -252,6 +252,81 @@ router.get('/verify-email', (req, res) => {
   } catch (err) {
     logger.error(err, 'GET /api/customers/verify-email error');
     res.status(500).json({ error: 'Verification failed' });
+  }
+});
+
+// ── POST /api/customers/forgot-password ────────
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body || {};
+
+    // Always return 200 to prevent user enumeration
+    if (!email || typeof email !== 'string') {
+      return res.json({ message: 'If that email exists, a reset link has been sent' });
+    }
+
+    const customer = db.prepare(
+      "SELECT id, email FROM customers WHERE email = ?"
+    ).get(email.trim().toLowerCase());
+
+    if (customer) {
+      const rawToken = generateToken();
+      const tokenHash = hashToken(rawToken);
+      const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 minutes
+
+      db.prepare(
+        "INSERT INTO password_reset_tokens (customer_id, token_hash, expires_at) VALUES (?, ?, ?)"
+      ).run(customer.id, tokenHash, expiresAt);
+
+      // Non-blocking — email failure does not affect response
+      sendPasswordResetEmail(customer.email, rawToken).catch((err) => {
+        logger.error(err, 'Password reset email send failed for customer ' + customer.id);
+      });
+    }
+
+    // Same response whether customer found or not — anti-enumeration
+    res.json({ message: 'If that email exists, a reset link has been sent' });
+  } catch (err) {
+    logger.error(err, 'POST /api/customers/forgot-password error');
+    res.status(500).json({ error: 'Request failed' });
+  }
+});
+
+// ── POST /api/customers/reset-password ─────────
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body || {};
+
+    if (!token || typeof token !== 'string' || token.length !== 64) {
+      return res.status(400).json({ error: 'Invalid or missing token' });
+    }
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ error: 'New password must be at least 8 characters' });
+    }
+
+    const tokenHash = hashToken(token);
+    const row = db.prepare(
+      "SELECT * FROM password_reset_tokens WHERE token_hash = ? AND expires_at > strftime('%Y-%m-%dT%H:%M:%SZ','now')"
+    ).get(tokenHash);
+
+    if (!row) return res.status(400).json({ error: 'Invalid or expired reset token' });
+
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+
+    // Atomic: update password + delete token in single transaction
+    db.transaction(() => {
+      db.prepare(
+        "UPDATE customers SET password_hash = ? WHERE id = ?"
+      ).run(passwordHash, row.customer_id);
+      db.prepare(
+        "DELETE FROM password_reset_tokens WHERE token_hash = ?"
+      ).run(tokenHash);
+    })();
+
+    res.json({ success: true });
+  } catch (err) {
+    logger.error(err, 'POST /api/customers/reset-password error');
+    res.status(500).json({ error: 'Password reset failed' });
   }
 });
 

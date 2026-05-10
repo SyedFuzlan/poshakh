@@ -72,6 +72,11 @@ async function runRecoveryTask() {
       
       logger.info({ checkoutId: checkout.id, phone: checkout.customer_phone }, 'Abandoned cart recovery SMS sent');
     }
+
+    // Clean up expired auth tokens to prevent table bloat
+    db.prepare("DELETE FROM refresh_tokens WHERE expires_at < strftime('%Y-%m-%dT%H:%M:%SZ','now')").run();
+    db.prepare("DELETE FROM email_verification_tokens WHERE expires_at < strftime('%Y-%m-%dT%H:%M:%SZ','now')").run();
+    db.prepare("DELETE FROM password_reset_tokens WHERE expires_at < strftime('%Y-%m-%dT%H:%M:%SZ','now')").run();
   } catch (err) {
     logger.error(err, 'Abandoned Cart Recovery Task Error');
   }
