@@ -46,8 +46,6 @@ test.describe('Cart', () => {
     const incBtn = page.getByRole('button', { name: '+' }).first()
     await incBtn.click()
 
-    // Badge should show 2
-    const badge = page.locator('button[aria-label="Cart"] span')
     // Drawer might be open — check quantity display
     await expect(page.locator('span').filter({ hasText: '2' }).first()).toBeVisible()
   })

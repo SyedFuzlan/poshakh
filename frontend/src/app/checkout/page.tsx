@@ -210,6 +210,12 @@ export default function CheckoutPage() {
     finally { setPaying(false); }
   };
 
+  interface RazorpayResponse {
+    razorpay_payment_id: string;
+    razorpay_order_id: string;
+    razorpay_signature: string;
+  }
+
   const handleRazorpay = async () => {
     setPaying(true);
     try {
@@ -232,7 +238,7 @@ export default function CheckoutPage() {
         name: "ZOHRA",
         description: "Premium Ethnic Wear",
         order_id: data.razorpay_order_id,
-        handler: async (response: any) => {
+        handler: async (response: RazorpayResponse) => {
           // 3. Verify on backend
           try {
             const vRes = await fetch(`${BACKEND}/api/payments/verify`, {
@@ -264,13 +270,14 @@ export default function CheckoutPage() {
         theme: { color: "#3D0D16" },
       };
 
-      const rzp = new (window as any).Razorpay(options);
-      rzp.on("payment.failed", (response: any) => {
+      const rzp = new (window as unknown as { Razorpay: new (o: typeof options) => { on: (e: string, c: (r: { error: { description: string } }) => void) => void; open: () => void } }).Razorpay(options);
+      rzp.on("payment.failed", (response) => {
         alert(response.error.description);
       });
       rzp.open();
-    } catch (err: any) {
-      alert(err.message || "Failed to initiate payment");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to initiate payment";
+      alert(msg);
     } finally {
       setPaying(false);
     }
