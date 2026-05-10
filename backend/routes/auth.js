@@ -24,8 +24,8 @@ router.post("/login", async (req, res) => {
     const ownerHash  = process.env.OWNER_PASSWORD_HASH;
 
     // Startup guard — if the env var is missing, fail loudly (not silently)
-    if (!ownerHash) {
-      logger.error("OWNER_PASSWORD_HASH not set in environment");
+    if (!ownerHash || !ownerEmail) {
+      logger.error("OWNER_PASSWORD_HASH or OWNER_EMAIL not set in environment");
       return res.status(500).json({ error: "Something went wrong" });
     }
 
