@@ -50,14 +50,14 @@ function hashToken(token) {
 }
 
 // Issues access + refresh token pair. Sets httpOnly cookie and returns accessToken.
-function issueTokenPair(res, customerId, phone) {
+async function issueTokenPair(res, customerId, phone) {
   const accessToken = signAccessToken(customerId, phone);
   const rawRefresh = generateToken();
   const refreshHash = hashToken(rawRefresh);
   const refreshExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  db.prepare(
-    "INSERT INTO refresh_tokens (customer_id, token_hash, expires_at) VALUES (?, ?, ?)"
+  await db.prepare(
+    "INSERT INTO refresh_tokens (customer_id, token_hash, expires_at) VALUES ($1, $2, $3)"
   ).run(customerId, refreshHash, refreshExpiry);
 
   res.cookie('refreshToken', rawRefresh, {
@@ -85,11 +85,11 @@ router.post("/signup", async (req, res) => {
 
     // Check for duplicate
     if (phone) {
-      const existing = db.prepare("SELECT id FROM customers WHERE phone = ?").get(phone.trim());
+      const existing = await db.prepare("SELECT id FROM customers WHERE phone = $1").get(phone.trim());
       if (existing) return res.status(409).json({ error: "An account with this phone number already exists" });
     }
     if (email) {
-      const existing = db.prepare("SELECT id FROM customers WHERE email = ?").get(email.trim().toLowerCase());
+      const existing = await db.prepare("SELECT id FROM customers WHERE email = $1").get(email.trim().toLowerCase());
       if (existing) return res.status(409).json({ error: "An account with this email already exists" });
     }
 
@@ -103,11 +103,11 @@ router.post("/signup", async (req, res) => {
     const verifExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h
 
     // Atomic: insert customer + verification token together
-    db.transaction(() => {
-      db.prepare(`
+    await db.transaction(async (client) => {
+      await client.query(`
         INSERT INTO customers (id, first_name, last_name, phone, email, password_hash, last_login)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).run(
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `, [
         id,
         (firstName || "").trim(),
         (lastName  || "").trim(),
@@ -115,17 +115,18 @@ router.post("/signup", async (req, res) => {
         email ? email.trim().toLowerCase() : null,
         passwordHash,
         now
-      );
+      ]);
 
       if (email) {
-        db.prepare(
-          "INSERT INTO email_verification_tokens (customer_id, token_hash, expires_at) VALUES (?, ?, ?)"
-        ).run(id, verifHash, verifExpiry);
+        await client.query(
+          "INSERT INTO email_verification_tokens (customer_id, token_hash, expires_at) VALUES ($1, $2, $3)",
+          [id, verifHash, verifExpiry]
+        );
       }
-    })();
+    });
 
-    const row = db.prepare("SELECT * FROM customers WHERE id = ?").get(id);
-    const accessToken = issueTokenPair(res, id, row.phone);
+    const row = await db.prepare("SELECT * FROM customers WHERE id = $1").get(id);
+    const accessToken = await issueTokenPair(res, id, row.phone);
 
     // Send verification email outside transaction (non-blocking — failure does not roll back signup)
     if (email) {
@@ -152,8 +153,8 @@ router.post("/login", async (req, res) => {
 
     const isPhone = /^\+?\d{7,}$/.test(identifier.trim());
     const row = isPhone
-      ? db.prepare("SELECT * FROM customers WHERE phone = ?").get(identifier.trim())
-      : db.prepare("SELECT * FROM customers WHERE email = ?").get(identifier.trim().toLowerCase());
+      ? await db.prepare("SELECT * FROM customers WHERE phone = $1").get(identifier.trim())
+      : await db.prepare("SELECT * FROM customers WHERE email = $1").get(identifier.trim().toLowerCase());
 
     // Constant-time path — no user enumeration
     if (!row || !(await bcrypt.compare(password, row.password_hash))) {
@@ -161,9 +162,9 @@ router.post("/login", async (req, res) => {
     }
 
     const now = new Date().toISOString();
-    db.prepare("UPDATE customers SET last_login = ? WHERE id = ?").run(now, row.id);
+    await db.prepare("UPDATE customers SET last_login = $1 WHERE id = $2").run(now, row.id);
 
-    const accessToken = issueTokenPair(res, row.id, row.phone);
+    const accessToken = await issueTokenPair(res, row.id, row.phone);
     res.json({ success: true, accessToken, customer: formatCustomer(row) });
   } catch (err) {
     logger.error(err, 'POST /api/customers/login error');
@@ -172,9 +173,9 @@ router.post("/login", async (req, res) => {
 });
 
 // ── GET /api/customers/me ──────────────────────
-router.get("/me", requireCustomer, (req, res) => {
+router.get("/me", requireCustomer, async (req, res) => {
   try {
-    const row = db.prepare("SELECT * FROM customers WHERE id = ?").get(req.customer.id);
+    const row = await db.prepare("SELECT * FROM customers WHERE id = $1").get(req.customer.id);
     if (!row) return res.status(404).json({ error: "Customer not found" });
     res.json({ customer: formatCustomer(row) });
   } catch (err) {
@@ -184,26 +185,44 @@ router.get("/me", requireCustomer, (req, res) => {
 });
 
 // ── POST /api/customers/refresh ────────────────
-router.post('/refresh', (req, res) => {
+router.post('/refresh', async (req, res) => {
   try {
     const inbound = req.cookies?.refreshToken;
     if (!inbound) return res.status(401).json({ error: 'No refresh token' });
 
     const inboundHash = hashToken(inbound);
-    const row = db.prepare(
-      "SELECT * FROM refresh_tokens WHERE token_hash = ? AND expires_at > strftime('%Y-%m-%dT%H:%M:%SZ','now')"
+    const row = await db.prepare(
+      "SELECT * FROM refresh_tokens WHERE token_hash = $1 AND expires_at > NOW()"
     ).get(inboundHash);
 
     if (!row) return res.status(401).json({ error: 'Invalid or expired refresh token' });
 
-    // Rotation: delete old token row first
-    db.prepare("DELETE FROM refresh_tokens WHERE id = ?").run(row.id);
-
-    // Issue new token pair (inserts new refresh_tokens row + sets cookie)
-    const customer = db.prepare("SELECT id, phone FROM customers WHERE id = ?").get(row.customer_id);
+    const customer = await db.prepare("SELECT id, phone FROM customers WHERE id = $1").get(row.customer_id);
     if (!customer) return res.status(401).json({ error: 'Customer not found' });
 
-    const accessToken = issueTokenPair(res, customer.id, customer.phone);
+    // Atomic rotation: DELETE old token + INSERT new one in a single transaction
+    // so that a crash between the two writes cannot silently log out the user.
+    const rawRefresh = generateToken();
+    const refreshHash = hashToken(rawRefresh);
+    const refreshExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    await db.transaction(async (client) => {
+      await client.query("DELETE FROM refresh_tokens WHERE id = $1", [row.id]);
+      await client.query(
+        "INSERT INTO refresh_tokens (customer_id, token_hash, expires_at) VALUES ($1, $2, $3)",
+        [customer.id, refreshHash, refreshExpiry]
+      );
+    });
+
+    res.cookie('refreshToken', rawRefresh, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/api/customers',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    const accessToken = signAccessToken(customer.id, customer.phone);
     res.json({ accessToken });
   } catch (err) {
     logger.error(err, 'POST /api/customers/refresh error');
@@ -212,12 +231,12 @@ router.post('/refresh', (req, res) => {
 });
 
 // ── POST /api/customers/logout ─────────────────
-router.post('/logout', (req, res) => {
+router.post('/logout', async (req, res) => {
   try {
     const inbound = req.cookies?.refreshToken;
     if (inbound) {
       const hash = hashToken(inbound);
-      db.prepare("DELETE FROM refresh_tokens WHERE token_hash = ?").run(hash);
+      await db.prepare("DELETE FROM refresh_tokens WHERE token_hash = $1").run(hash);
     }
     res.clearCookie('refreshToken', { path: '/api/customers' });
     res.json({ success: true });
@@ -228,7 +247,7 @@ router.post('/logout', (req, res) => {
 });
 
 // ── GET /api/customers/verify-email ───────────
-router.get('/verify-email', (req, res) => {
+router.get('/verify-email', async (req, res) => {
   try {
     const { token } = req.query;
     if (!token || typeof token !== 'string' || token.length !== 64) {
@@ -236,17 +255,17 @@ router.get('/verify-email', (req, res) => {
     }
 
     const tokenHash = hashToken(token);
-    const row = db.prepare(
-      "SELECT * FROM email_verification_tokens WHERE token_hash = ? AND expires_at > strftime('%Y-%m-%dT%H:%M:%SZ','now')"
+    const row = await db.prepare(
+      "SELECT * FROM email_verification_tokens WHERE token_hash = $1 AND expires_at > NOW()"
     ).get(tokenHash);
 
     if (!row) return res.status(400).json({ error: 'Invalid or expired verification token' });
 
     // Mark verified and delete token atomically
-    db.transaction(() => {
-      db.prepare("UPDATE customers SET email_verified = 1 WHERE id = ?").run(row.customer_id);
-      db.prepare("DELETE FROM email_verification_tokens WHERE token_hash = ?").run(tokenHash);
-    })();
+    await db.transaction(async (client) => {
+      await client.query("UPDATE customers SET email_verified = 1 WHERE id = $1", [row.customer_id]);
+      await client.query("DELETE FROM email_verification_tokens WHERE token_hash = $1", [tokenHash]);
+    });
 
     res.json({ verified: true });
   } catch (err) {
@@ -265,8 +284,8 @@ router.post('/forgot-password', async (req, res) => {
       return res.json({ message: 'If that email exists, a reset link has been sent' });
     }
 
-    const customer = db.prepare(
-      "SELECT id, email FROM customers WHERE email = ?"
+    const customer = await db.prepare(
+      "SELECT id, email FROM customers WHERE email = $1"
     ).get(email.trim().toLowerCase());
 
     if (customer) {
@@ -274,8 +293,8 @@ router.post('/forgot-password', async (req, res) => {
       const tokenHash = hashToken(rawToken);
       const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 minutes
 
-      db.prepare(
-        "INSERT INTO password_reset_tokens (customer_id, token_hash, expires_at) VALUES (?, ?, ?)"
+      await db.prepare(
+        "INSERT INTO password_reset_tokens (customer_id, token_hash, expires_at) VALUES ($1, $2, $3)"
       ).run(customer.id, tokenHash, expiresAt);
 
       // Non-blocking — email failure does not affect response
@@ -305,8 +324,8 @@ router.post('/reset-password', async (req, res) => {
     }
 
     const tokenHash = hashToken(token);
-    const row = db.prepare(
-      "SELECT * FROM password_reset_tokens WHERE token_hash = ? AND expires_at > strftime('%Y-%m-%dT%H:%M:%SZ','now')"
+    const row = await db.prepare(
+      "SELECT * FROM password_reset_tokens WHERE token_hash = $1 AND expires_at > NOW()"
     ).get(tokenHash);
 
     if (!row) return res.status(400).json({ error: 'Invalid or expired reset token' });
@@ -314,14 +333,16 @@ router.post('/reset-password', async (req, res) => {
     const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
 
     // Atomic: update password + delete token in single transaction
-    db.transaction(() => {
-      db.prepare(
-        "UPDATE customers SET password_hash = ? WHERE id = ?"
-      ).run(passwordHash, row.customer_id);
-      db.prepare(
-        "DELETE FROM password_reset_tokens WHERE token_hash = ?"
-      ).run(tokenHash);
-    })();
+    await db.transaction(async (client) => {
+      await client.query(
+        "UPDATE customers SET password_hash = $1 WHERE id = $2",
+        [passwordHash, row.customer_id]
+      );
+      await client.query(
+        "DELETE FROM password_reset_tokens WHERE token_hash = $1",
+        [tokenHash]
+      );
+    });
 
     res.json({ success: true });
   } catch (err) {
