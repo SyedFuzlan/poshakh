@@ -14,6 +14,7 @@ const path = require('path');
 
 const DB_PATH = process.env.DATABASE_PATH || path.join(__dirname, 'data', 'poshakh.db');
 let _db = null;
+let _inTransaction = false;
 
 // ── helpers ───────────────────────────────────────────────────────────────
 
@@ -60,7 +61,7 @@ function prepare(sql) {
         rowIdResult.length && rowIdResult[0].values.length
           ? Number(rowIdResult[0].values[0][0])
           : 0;
-      _save();
+      if (!_inTransaction) _save();
       return { lastInsertRowid };
     },
   };
@@ -312,14 +313,17 @@ function getDb() {
  * Since sql.js is in-memory, we just run the callback and save to disk once at the end.
  */
 function transaction(fn) {
+  _inTransaction = true;
   try {
     _db.run('BEGIN TRANSACTION');
     const result = fn();
     _db.run('COMMIT');
+    _inTransaction = false;
     _save();
     return result;
   } catch (err) {
     _db.run('ROLLBACK');
+    _inTransaction = false;
     throw err;
   }
 }
