@@ -269,6 +269,33 @@ async function initDb() {
       key   TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS refresh_tokens (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      customer_id TEXT    NOT NULL,
+      token_hash  TEXT    NOT NULL UNIQUE,
+      expires_at  TEXT    NOT NULL,
+      created_at  TEXT    DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+      FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS email_verification_tokens (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      customer_id TEXT    NOT NULL,
+      token_hash  TEXT    NOT NULL UNIQUE,
+      expires_at  TEXT    NOT NULL,
+      created_at  TEXT    DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+      FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      customer_id TEXT    NOT NULL,
+      token_hash  TEXT    NOT NULL UNIQUE,
+      expires_at  TEXT    NOT NULL,
+      created_at  TEXT    DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+      FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+    );
   `);
 
   // ── safe migrations (columns that may not exist in older DBs) ─────────
@@ -289,6 +316,7 @@ async function initDb() {
     'CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_razorpay_payment_id ' +
     'ON orders(razorpay_payment_id) WHERE razorpay_payment_id IS NOT NULL'
   );
+  safeMigrate('ALTER TABLE customers ADD COLUMN email_verified INTEGER DEFAULT 0');
 
   // Create default category if none exists
   try {
