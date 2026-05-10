@@ -275,7 +275,7 @@ router.get('/verify-email', async (req, res) => {
 
     // Mark verified and delete token atomically
     await db.transaction(async (client) => {
-      await client.query("UPDATE customers SET email_verified = 1 WHERE id = $1", [row.customer_id]);
+      await client.query("UPDATE customers SET email_verified = true WHERE id = $1", [row.customer_id]);
       await client.query("DELETE FROM email_verification_tokens WHERE token_hash = $1", [tokenHash]);
     });
 
