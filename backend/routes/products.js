@@ -263,13 +263,12 @@ router.post(
       }
 
       const { lastInsertRowid: productId } = await db.prepare(
-          `INSERT INTO products (name, price_paise, compare_at_price_paise, category, category_id, collection, slug, description, meta_title, meta_description)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`
+          `INSERT INTO products (name, price_paise, compare_at_price_paise, category_id, collection, slug, description, meta_title, meta_description)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`
         ).run(
           name.trim(),
           Math.round(price * 100),
           compare_at_price ? Math.round(parseFloat(compare_at_price) * 100) : null,
-          "", // legacy category column
           catId,
           (collection || "").trim(),
           slug,
