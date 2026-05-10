@@ -1,9 +1,10 @@
 node_modules
-.medusa
-.git
-*.md
+npm-debug.log
 .env
-.env.*
-!.env.template
-integration-tests
-coverage
+data/
+tests/
+.planning/
+Dockerfile
+.dockerignore
+.git
+.gitignore

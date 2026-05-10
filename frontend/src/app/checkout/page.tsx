@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Script from "next/script";
 import Image from "next/image";
 import Link from "next/link";
 import { useStore } from "@/store";
@@ -209,6 +210,72 @@ export default function CheckoutPage() {
     finally { setPaying(false); }
   };
 
+  const handleRazorpay = async () => {
+    setPaying(true);
+    try {
+      // 1. Create order on backend
+      const res = await fetch(`${BACKEND}/api/payments/create-order`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount_in_rupees: total }),
+      });
+      const data = await res.json();
+      if (!data.razorpay_order_id) {
+        throw new Error(data.error || "Failed to create payment order");
+      }
+
+      // 2. Open Razorpay Modal
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: data.amount,
+        currency: data.currency,
+        name: "ZOHRA",
+        description: "Premium Ethnic Wear",
+        order_id: data.razorpay_order_id,
+        handler: async (response: any) => {
+          // 3. Verify on backend
+          try {
+            const vRes = await fetch(`${BACKEND}/api/payments/verify`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                order_data: buildOrderData("razorpay"),
+              }),
+            });
+            const vData = await vRes.json();
+            if (vData.success) {
+              finishOrder(response.razorpay_payment_id);
+            } else {
+              alert(vData.error || "Verification failed");
+            }
+          } catch (err) {
+            console.error("Verification error:", err);
+            alert("Verification failed due to network error.");
+          }
+        },
+        prefill: {
+          name: `${addr.firstName} ${addr.lastName}`,
+          email: customer?.email ?? guestEmail,
+          contact: addr.phone,
+        },
+        theme: { color: "#3D0D16" },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on("payment.failed", (response: any) => {
+        alert(response.error.description);
+      });
+      rzp.open();
+    } catch (err: any) {
+      alert(err.message || "Failed to initiate payment");
+    } finally {
+      setPaying(false);
+    }
+  };
+
   const handleApplyPromo = async () => {
     if (!promoCode) return;
     setPromoLoading(true);
@@ -240,6 +307,7 @@ export default function CheckoutPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#fff" }}>
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" />
       {/* Header */}
       <header style={{ borderBottom: "1px solid #e5e7eb", padding: "20px 40px", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <Link href="/" style={{ display: "flex", flexDirection: "column", alignItems: "center", textDecoration: "none" }}>
@@ -427,7 +495,6 @@ export default function CheckoutPage() {
 
               <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: upiStep !== "idle" ? "0" : "28px" }}>
                 {/* Razorpay */}
-{/* Razorpay disabled for Phase 4 initial launch
                 <button
                   onClick={handleRazorpay}
                   disabled={paying || upiStep !== "idle"}
@@ -435,7 +502,6 @@ export default function CheckoutPage() {
                 >
                   {paying ? "PREPARING..." : `PAY ₹${total.toLocaleString("en-IN")} WITH RAZORPAY`}
                 </button>
-                */}
 
                 {/* UPI — temporarily disabled
                 <button

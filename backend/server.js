@@ -14,13 +14,15 @@ const cookieParser = require('cookie-parser');
 const pinoHttp = require("pino-http");
 const { initDb, db } = require("./db");
 const logger = require("./utils/logger");
+const crypto = require("crypto");
+const { register, httpRequestDurationMicroseconds } = require("./utils/metrics");
 
 // ── Env validation ──────────────────────────────
 const required = ["OWNER_EMAIL", "OWNER_PASSWORD_HASH", "JWT_SECRET"];
 const missing = required.filter((k) => !process.env[k]);
 if (missing.length > 0) {
-  console.error(`❌  Missing required env vars: ${missing.join(", ")}`);
-  console.error("    Copy backend/.env.example to backend/.env and fill in the values.");
+  logger.fatal(`❌ Missing required env vars: ${missing.join(", ")}`);
+  logger.fatal("Copy backend/.env.example to backend/.env and fill in the values.");
   process.exit(1);
 }
 
@@ -29,8 +31,8 @@ if (process.env.NODE_ENV === 'production') {
   const prodRequired = ["RESEND_API_KEY", "APP_URL", "BACKEND_URL"];
   const prodMissing = prodRequired.filter((k) => !process.env[k]);
   if (prodMissing.length > 0) {
-    console.error(`❌  Missing required production env vars: ${prodMissing.join(", ")}`);
-    console.error("    Set RESEND_API_KEY, APP_URL (frontend URL), and BACKEND_URL (backend API URL).");
+    logger.fatal(`❌ Missing required production env vars: ${prodMissing.join(", ")}`);
+    logger.fatal("Set RESEND_API_KEY, APP_URL (frontend URL), and BACKEND_URL (backend API URL).");
     process.exit(1);
   }
 }
@@ -39,7 +41,38 @@ if (process.env.NODE_ENV === 'production') {
 const app = express();
 
 // Security, Logging and Performance
-app.use(pinoHttp({ logger }));
+app.use(pinoHttp({ 
+  logger,
+  genReqId: (req) => req.headers["x-request-id"] || crypto.randomUUID(),
+  customProps: (req, res) => ({
+    requestId: req.id
+  })
+}));
+
+// Propagate Request ID to headers
+app.use((req, res, next) => {
+  res.setHeader("X-Request-Id", req.id);
+  next();
+});
+
+// Metrics Middleware
+app.use((req, res, next) => {
+  const start = process.hrtime();
+  res.on('finish', () => {
+    const diff = process.hrtime(start);
+    const durationInSeconds = diff[0] + diff[1] / 1e9;
+    
+    // Only track if route is defined (avoids spam from 404s/static)
+    if (req.route) {
+      httpRequestDurationMicroseconds.observe(
+        { method: req.method, route: req.route.path, code: res.statusCode },
+        durationInSeconds
+      );
+    }
+  });
+  next();
+});
+
 app.use(compression());
 app.set("trust proxy", 1);
 app.use(helmet({
@@ -102,11 +135,11 @@ app.use(cookieParser());
 
 // Parse JSON bodies (except for the webhook route which needs raw)
 app.use((req, res, next) => {
-  if (req.path === "/api/payments/webhook") return next();
+  if (req.path.includes("/payments/webhook")) return next();
   express.json({ limit: "10mb" })(req, res, next);
 });
 app.use((req, res, next) => {
-  if (req.path === "/api/payments/webhook") return next();
+  if (req.path.includes("/payments/webhook")) return next();
   express.urlencoded({ extended: true, limit: "10mb" })(req, res, next);
 });
 
@@ -123,9 +156,9 @@ app.use(
 app.use("/dashboard", helmet.contentSecurityPolicy({
   directives: {
     defaultSrc: ["'self'"],
-    scriptSrc: ["'self'"],
+    scriptSrc: ["'self'", "'unsafe-inline'"],
     styleSrc: ["'self'", "'unsafe-inline'"],
-    imgSrc: ["'self'", "data:"],
+    imgSrc: ["'self'", "data:", "*"],
     connectSrc: ["'self'"],
   },
 }));
@@ -134,20 +167,42 @@ app.use("/dashboard", helmet.contentSecurityPolicy({
 app.use("/dashboard", express.static(path.join(__dirname, "dashboard")));
 
 // ── Routes ──────────────────────────────────────
-app.use("/api/auth", authLimiter, require("./routes/auth"));
-// refreshLimiter covers all /api/customers/* routes (generous, DoS-resistant).
-// authLimiter is applied per-route inside customers.js for brute-force targets
-// (signup, login, forgot-password, reset-password).
-app.use("/api/customers", refreshLimiter, require("./routes/customers"));
-app.use("/api/products", require("./routes/products"));
-app.use("/api/orders", apiLimiter, require("./routes/orders"));
-app.use("/api/payments", apiLimiter, require("./routes/payments").router);
-app.use("/api/promo", require("./routes/promo"));
-app.use("/api/settings", require("./routes/site-settings"));
+const v1 = express.Router();
+
+v1.use("/auth", authLimiter, require("./routes/auth"));
+v1.use("/customers", refreshLimiter, require("./routes/customers"));
+v1.use("/products", require("./routes/products"));
+v1.use("/orders", apiLimiter, require("./routes/orders"));
+v1.use("/payments", apiLimiter, require("./routes/payments").router);
+v1.use("/promo", require("./routes/promo"));
+v1.use("/settings", require("./routes/site-settings"));
 const { router: checkoutRouter, runRecoveryTask } = require("./routes/checkouts");
-app.use("/api/checkouts", checkoutLimiter, checkoutRouter);
+v1.use("/checkouts", checkoutLimiter, checkoutRouter);
+
+app.use("/api/v1", v1);
+app.use("/api", v1); // Alias for backward compatibility
 
 // Health check
+app.get("/health", async (_req, res) => {
+  try {
+    await db.query("SELECT 1");
+    res.json({ status: "ok", service: "poshakh-api", version: "1.0.0", database: "connected" });
+  } catch (err) {
+    logger.error(err, "Health check failed");
+    res.status(503).json({ status: "error", database: "disconnected" });
+  }
+});
+
+// Prometheus metrics
+app.get("/metrics", async (req, res) => {
+  try {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
+  } catch (err) {
+    res.status(500).end(err);
+  }
+});
+
 app.get("/", (_req, res) => {
   res.json({ status: "ok", service: "poshakh-api", version: "1.0.0" });
 });
@@ -166,20 +221,14 @@ app.use((err, _req, res, _next) => {
 // ── Start ───────────────────────────────────────
 const PORT = parseInt(process.env.PORT || "9000", 10);
 
+let server;
 (async () => {
-  await initDb(); // Initialize SQLite DB before accepting requests
-  app.listen(PORT, () => {
-    console.log(`
-  ┌────────────────────────────────────────────────────┐
-  │  🛍️  Poshakh API running                           │
-  │  API:       http://localhost:${PORT}                  │
-  │  Dashboard: http://localhost:${PORT}/dashboard        │
-  └────────────────────────────────────────────────────┘
-    `);
+  await initDb();
+  server = app.listen(PORT, () => {
+    logger.info(`Poshakh API running on http://localhost:${PORT}`);
+    logger.info(`Dashboard: http://localhost:${PORT}/dashboard`);
     
-    // Start background recovery task (every 30 mins)
     setInterval(runRecoveryTask, 30 * 60 * 1000);
-    // Initial run after 1 min
     setTimeout(runRecoveryTask, 60 * 1000);
   });
 })();
@@ -187,13 +236,22 @@ const PORT = parseInt(process.env.PORT || "9000", 10);
 // ── Graceful Shutdown ───────────────────────────
 const shutdown = async (signal) => {
   logger.info({ signal }, "Shutdown signal received");
+  
+  if (server) {
+    logger.info("Closing HTTP server...");
+    server.close(() => {
+      logger.info("HTTP server closed");
+    });
+  }
+
   try {
     await db.close();
     logger.info("Database pool closed");
+    process.exit(0);
   } catch (err) {
-    logger.error(err, "Error closing database pool");
+    logger.error(err, "Error during shutdown");
+    process.exit(1);
   }
-  process.exit(0);
 };
 
 process.on("SIGTERM", () => shutdown("SIGTERM"));

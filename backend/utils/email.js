@@ -7,6 +7,7 @@
 //  In production: calls Resend API. Requires RESEND_API_KEY env var.
 // ──────────────────────────────────────────────
 const { Resend } = require('resend');
+const logger = require('./logger');
 
 // Lazily-initialized Resend client so require() does not throw in dev/test
 // environments where RESEND_API_KEY is not set (constructor throws on empty key).
@@ -29,7 +30,7 @@ async function sendVerificationEmail(to, rawToken) {
   const link = `${process.env.BACKEND_URL || 'http://localhost:9000'}/api/customers/verify-email?token=${rawToken}`;
 
   if (process.env.NODE_ENV !== 'production') {
-    console.log(`[DEV] Email verification link for ${to}: ${link}`);
+    logger.info({ to, link }, `[DEV] Email verification link`);
     return;
   }
 
@@ -46,7 +47,7 @@ async function sendVerificationEmail(to, rawToken) {
   });
 
   if (error) {
-    console.error('[email] Resend delivery failed:', error);
+    logger.error({ error, to }, 'Resend delivery failed');
     throw new Error('Email delivery failed: ' + error.message);
   }
 }
@@ -60,7 +61,7 @@ async function sendPasswordResetEmail(to, rawToken) {
   const link = `${process.env.APP_URL || 'http://localhost:3000'}/reset-password?token=${rawToken}`;
 
   if (process.env.NODE_ENV !== 'production') {
-    console.log(`[DEV] Password reset link for ${to}: ${link}`);
+    logger.info({ to, link }, `[DEV] Password reset link`);
     return;
   }
 
@@ -77,7 +78,7 @@ async function sendPasswordResetEmail(to, rawToken) {
   });
 
   if (error) {
-    console.error('[email] Resend delivery failed:', error);
+    logger.error({ error, to }, 'Resend delivery failed');
     throw new Error('Email delivery failed: ' + error.message);
   }
 }

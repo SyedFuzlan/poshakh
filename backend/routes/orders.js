@@ -29,6 +29,7 @@ router.post("/", async (req, res) => {
     const orderId = generateOrderId();
     await saveOrder({
       orderId,
+      checkoutId: order_data.id,
       paymentMethod: "COD",
       razorpayPaymentId: null,
       razorpayOrderId: null,
@@ -240,6 +241,20 @@ router.get("/", requireOwner, async (req, res) => {
   }
 });
 
+const VALID_TRANSITIONS = {
+  'pending': ['paid', 'confirmed', 'cancelled', 'failed', 'processing'],
+  'pending_verification': ['paid', 'cancelled', 'failed'],
+  'paid': ['processing', 'cancelled'],
+  'confirmed': ['processing', 'cancelled'],
+  'processing': ['shipped', 'cancelled'],
+  'shipped': ['delivered', 'cancelled'],
+  'delivered': ['return_requested', 'cancelled'],
+  'return_requested': ['returned', 'processing', 'cancelled'],
+  'returned': [],
+  'cancelled': [],
+  'failed': ['pending']
+};
+
 // ── PATCH /api/orders/:id ───────────────────────
 // General purpose update (Admin only)
 router.patch("/:id", requireOwner, async (req, res) => {
@@ -249,6 +264,17 @@ router.patch("/:id", requireOwner, async (req, res) => {
     
     const row = await db.prepare("SELECT * FROM orders WHERE id = $1").get(id);
     if (!row) return res.status(404).json({ error: "Order not found" });
+
+    // Validate transition
+    if (status && status !== row.status) {
+      const allowed = VALID_TRANSITIONS[row.status] || [];
+      if (!allowed.includes(status)) {
+        return res.status(400).json({ 
+          error: `Invalid status transition from '${row.status}' to '${status}'`,
+          allowed_transitions: allowed
+        });
+      }
+    }
 
     const updates = [];
     const params = [];
@@ -292,29 +318,36 @@ router.patch("/:id", requireOwner, async (req, res) => {
         );
       }
 
-      // Handle Restocking on Cancellation
-      if (status === 'cancelled' && row.status !== 'cancelled') {
-        const items = JSON.parse(row.items_json || '[]');
-        for (const item of items) {
-          if (item.product_id && item.size) {
-            const qty = parseInt(item.quantity || 1, 10);
-            await client.query(
-              `UPDATE product_variants SET stock = stock + $1 WHERE product_id = $2 AND size = $3`,
-              [qty, item.product_id, item.size]
-            );
+      // 3. Restock if cancelled/failed/returned
+      if (status === 'cancelled' || status === 'failed' || status === 'returned') {
+        const items = await client.query("SELECT product_id, size, quantity FROM order_items WHERE order_id = $1", [id]);
+        for (const item of items.rows) {
+          await client.query("UPDATE product_variants SET stock = stock + $1 WHERE product_id = $2 AND size = $3", [item.quantity, item.product_id, item.size]);
+          
+          const vRes = await client.query("SELECT id FROM product_variants WHERE product_id = $1 AND size = $2", [item.product_id, item.size]);
+          if (vRes.rows[0]) {
+            await client.query("INSERT INTO inventory_logs (variant_id, change, reason, order_id) VALUES ($1, $2, $3, $4)", [
+              vRes.rows[0].id, item.quantity, status === 'returned' ? 'restock_return' : 'restock_cancel', id
+            ]);
+          }
+        }
+      }
 
-            // Log inventory restock
-            const resVariant = await client.query(
-              `SELECT id FROM product_variants WHERE product_id = $1 AND size = $2`,
-              [item.product_id, item.size]
-            );
-            const variant = resVariant.rows[0];
-            if (variant) {
-              await client.query(
-                `INSERT INTO inventory_logs (variant_id, change, reason, order_id, admin_id) VALUES ($1, $2, $3, $4, $5)`,
-                [variant.id, qty, 'cancellation_restock', id, req.owner?.id || req.owner?.email]
-              );
-            }
+      // 4. Trigger Refund if 'returned' and was Online payment
+      if (status === 'returned' && (row.payment_method === 'razorpay' || row.payment_method === 'card')) {
+        if (row.razorpay_payment_id) {
+          try {
+            const { getRazorpay } = require("./payments");
+            const rzp = getRazorpay();
+            await rzp.payments.refund(row.razorpay_payment_id, {
+              amount: row.total_paise, // Full refund
+              notes: { reason: "Customer return processed by admin" }
+            });
+            logger.info({ orderId: id, paymentId: row.razorpay_payment_id }, "Razorpay refund triggered successfully");
+          } catch (refundErr) {
+            logger.error({ refundErr, orderId: id }, "Failed to trigger Razorpay refund");
+            // We don't throw here to avoid rolling back the status update, 
+            // but we should probably log it prominently or return a warning.
           }
         }
       }
@@ -340,6 +373,36 @@ router.patch("/:id", requireOwner, async (req, res) => {
   } catch (err) {
     console.error("PATCH /api/orders error:", err);
     res.status(500).json({ error: "Failed to update order" });
+  }
+});
+
+// ── POST /api/orders/:id/return ─────────────────
+// Customer requests a return
+const requireCustomer = require("../middleware/requireCustomer");
+router.post("/:id/return", requireCustomer, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    const row = await db.prepare("SELECT * FROM orders WHERE id = $1 AND (customer_id = $2 OR customer_phone = $3)").get(id, req.customer.id, req.customer.phone);
+    if (!row) return res.status(404).json({ error: "Order not found" });
+
+    if (row.status !== 'delivered') {
+      return res.status(400).json({ error: "Only delivered orders can be returned" });
+    }
+
+    await db.transaction(async (client) => {
+      await client.query("UPDATE orders SET status = 'return_requested' WHERE id = $1", [id]);
+      await client.query(
+        "INSERT INTO order_status_history (order_id, status, comment) VALUES ($1, $2, $3)",
+        [id, 'return_requested', `Return requested by customer. Reason: ${reason || 'Not provided'}`]
+      );
+    });
+
+    res.json({ success: true, status: 'return_requested' });
+  } catch (err) {
+    logger.error(err, "POST /api/orders/:id/return error");
+    res.status(500).json({ error: "Failed to request return" });
   }
 });
 

@@ -49,7 +49,7 @@ const logger = require("../utils/logger");
 
 // ── Save order to DB ────────────────────────────
 // Uses a flat orders table that stores address fields inline + items as JSON.
-async function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOrderId, utr, orderData }) {
+async function saveOrder({ orderId, checkoutId, paymentMethod, razorpayPaymentId, razorpayOrderId, utr, orderData }) {
   const {
     customer_name,
     customer_phone,
@@ -80,7 +80,7 @@ async function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOr
         const product = productRes.rows[0];
 
         const variantRes = await client.query(`
-          SELECT stock FROM product_variants 
+          SELECT id, stock, reserved_stock FROM product_variants 
           WHERE product_id = $1 AND size = $2
         `, [item.product_id, item.size]);
         const variant = variantRes.rows[0];
@@ -90,14 +90,25 @@ async function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOr
           throw new Error(`Product variant ${item.name} (${item.size}) not found.`);
         }
         
-        if (variant.stock < (item.quantity || 1)) {
-          logger.warn({ orderId, product_id: item.product_id, size: item.size, stock: variant.stock }, "Insufficient stock");
-          throw new Error(`Insufficient stock for ${item.name} (${item.size}). Available: ${variant.stock}`);
+        const qty = item.quantity || 1;
+
+        // Check if we have a reservation for this checkout
+        const resCheck = await client.query(`
+          SELECT quantity FROM inventory_reservations 
+          WHERE checkout_id = $1 AND variant_id = $2
+        `, [checkoutId, variant.id]);
+        
+        const reservedByMe = resCheck.rows[0]?.quantity || 0;
+        const available = variant.stock - (variant.reserved_stock - reservedByMe);
+
+        if (available < qty) {
+          logger.warn({ orderId, product_id: item.product_id, size: item.size, stock: variant.stock, reserved: variant.reserved_stock, reservedByMe }, "Insufficient stock");
+          throw new Error(`Insufficient stock for ${item.name} (${item.size}). Available: ${available}`);
         }
 
         // Use price_paise if available, otherwise convert price to paise
         const itemPricePaise = (product.price_paise != null) ? product.price_paise : Math.round(product.price * 100);
-        calculatedSubtotalPaise += itemPricePaise * (item.quantity || 1);
+        calculatedSubtotalPaise += itemPricePaise * qty;
       }
     }
 
@@ -106,7 +117,6 @@ async function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOr
     const frontendTotalPaise = Math.round(orderData.total * 100);
 
     // Security Check: Price Mismatch
-    // We allow a 1% variance for weird rounding issues, but anything else is suspicious
     if (Math.abs(calculatedTotalPaise - frontendTotalPaise) > (calculatedTotalPaise * 0.01)) {
       logger.error({ 
         orderId, 
@@ -163,25 +173,40 @@ async function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOr
     if (Array.isArray(items)) {
       for (const item of items) {
         if (item.product_id && item.size) {
-          // Resolve price for item
           const productRes = await client.query(`SELECT price_paise, price FROM products WHERE id = $1`, [item.product_id]);
           const product = productRes.rows[0];
           const pricePaise = (product?.price_paise != null) ? product.price_paise : Math.round((product?.price || 0) * 100);
           
           const qty = parseInt(item.quantity || 1, 10);
 
-          // Insert into order_items table
           await client.query(`
             INSERT INTO order_items (order_id, product_id, variant_id, name, quantity, price_paise, size, image)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
           `, [orderId, item.product_id, item.variant_id, item.name, qty, pricePaise, item.size, item.image]);
 
-          // Decrement stock in product_variants
-          await client.query(`
-            UPDATE product_variants 
-            SET stock = stock - $1 
-            WHERE product_id = $2 AND size = $3
-          `, [qty, item.product_id, item.size]);
+          // CONSUME RESERVATION
+          const resDelete = await client.query(`
+            DELETE FROM inventory_reservations 
+            WHERE checkout_id = $1 AND variant_id = (SELECT id FROM product_variants WHERE product_id = $2 AND size = $3)
+            RETURNING quantity
+          `, [checkoutId, item.product_id, item.size]);
+
+          if (resDelete.rows.length > 0) {
+            const reservedQty = resDelete.rows[0].quantity;
+            // Decrement both stock and reserved_stock
+            await client.query(`
+              UPDATE product_variants 
+              SET stock = stock - $1, reserved_stock = reserved_stock - $2
+              WHERE product_id = $3 AND size = $4
+            `, [qty, reservedQty, item.product_id, item.size]);
+          } else {
+            // No reservation, decrement just stock
+            await client.query(`
+              UPDATE product_variants 
+              SET stock = stock - $1 
+              WHERE product_id = $2 AND size = $3
+            `, [qty, item.product_id, item.size]);
+          }
 
           // Log inventory movement
           const variantRes = await client.query(`SELECT id FROM product_variants WHERE product_id = $1 AND size = $2`, [item.product_id, item.size]);
@@ -207,16 +232,22 @@ async function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOr
 // ── POST /api/payments/create-order ────────────
 router.post("/create-order", async (req, res) => {
   try {
-    const { amount_in_rupees } = req.body;
+    const { amount, amount_in_rupees, currency = "INR" } = req.body;
+    
+    // Support both paise (amount) and rupees (amount_in_rupees)
+    let amountPaise = amount;
+    if (!amountPaise && amount_in_rupees) {
+      amountPaise = Math.round(amount_in_rupees * 100);
+    }
 
-    if (!amount_in_rupees || amount_in_rupees <= 0) {
-      return res.status(400).json({ error: "amount_in_rupees must be a positive number" });
+    if (!amountPaise || amountPaise < 100) {
+      return res.status(400).json({ error: "Minimum amount is 100 paise (₹1)" });
     }
 
     const razorpay = getRazorpay();
     const rzpOrder = await razorpay.orders.create({
-      amount: Math.round(amount_in_rupees * 100),
-      currency: "INR",
+      amount: amountPaise,
+      currency,
       receipt: `psk_${Date.now()}`,
     });
 
@@ -232,8 +263,19 @@ router.post("/create-order", async (req, res) => {
   }
 });
 
+// ── POST /api/payments/verify-payment ───────────
+router.post("/verify-payment", async (req, res) => {
+  // Alias for /verify to match user requirements
+  return module.exports.handleVerify(req, res);
+});
+
 // ── POST /api/payments/verify ───────────────────
 router.post("/verify", async (req, res) => {
+  return module.exports.handleVerify(req, res);
+});
+
+// Move verification logic to a shared function
+async function handleVerify(req, res) {
   try {
     const {
       razorpay_order_id,
@@ -271,6 +313,7 @@ router.post("/verify", async (req, res) => {
     const orderId = generateOrderId();
     await saveOrder({
       orderId,
+      checkoutId: order_data.id,
       paymentMethod: "razorpay",
       razorpayPaymentId: razorpay_payment_id,
       razorpayOrderId: razorpay_order_id,
@@ -285,10 +328,10 @@ router.post("/verify", async (req, res) => {
     if (err && String(err.message).includes("UNIQUE constraint failed: orders.razorpay_payment_id")) {
       return res.status(409).json({ success: false, error: "Duplicate payment — order already exists" });
     }
-    logger.error({ err }, "POST /api/payments/verify error");
+    logger.error({ err }, "Payment verification error");
     res.status(500).json({ success: false, error: "Failed to verify payment" });
   }
-});
+}
 
 // ── POST /api/payments/upi-confirm ─────────────
 router.post("/upi-confirm", async (req, res) => {
@@ -312,6 +355,7 @@ router.post("/upi-confirm", async (req, res) => {
     const orderId = generateOrderId();
     await saveOrder({
       orderId,
+      checkoutId: order_data.id,
       paymentMethod: "upi",
       razorpayPaymentId: null,
       razorpayOrderId: null,
@@ -335,7 +379,7 @@ router.post("/upi-confirm", async (req, res) => {
 router.post(
   "/webhook",
   express.raw({ type: "application/json" }),
-  (req, res) => {
+  async (req, res) => {
     try {
       const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
       if (!webhookSecret) {
@@ -365,23 +409,38 @@ router.post(
       }
 
       const event = JSON.parse(req.body.toString());
+      const eventId = event.id;
+
+      if (!eventId) {
+        return res.status(400).json({ error: "Missing event ID" });
+      }
+
+      // Check for idempotency
+      const existingEvent = await db.prepare("SELECT id FROM processed_webhooks WHERE event_id = $1").get(eventId);
+      if (existingEvent) {
+        logger.info({ eventId }, "Webhook already processed, skipping.");
+        return res.json({ status: "ok", duplicate: true });
+      }
 
       if (event.event === "payment.captured") {
         const payment = event.payload?.payment?.entity;
         if (payment) {
-          const existing = db
-            .prepare("SELECT id FROM orders WHERE razorpay_payment_id = ?")
+          const existing = await db
+            .prepare("SELECT id FROM orders WHERE razorpay_payment_id = $1")
             .get(payment.id);
 
           if (existing) {
-            db.prepare(
-              "UPDATE orders SET status = 'paid' WHERE id = ? AND status = 'pending_verification'"
+            await db.prepare(
+              "UPDATE orders SET status = 'paid' WHERE id = $1 AND status = 'pending_verification'"
             ).run(existing.id);
           } else {
             logger.error({ paymentId: payment.id }, "Orphaned payment — not in orders DB");
           }
         }
       }
+
+      // Mark as processed
+      await db.prepare("INSERT INTO processed_webhooks (event_id, provider) VALUES ($1, $2)").run(eventId, 'razorpay');
 
       res.json({ status: "ok" });
     } catch (err) {
@@ -395,5 +454,7 @@ module.exports = {
   router,
   generateOrderId,
   validateOrderData,
-  saveOrder
+  saveOrder,
+  getRazorpay,
+  handleVerify
 };

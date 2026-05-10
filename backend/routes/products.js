@@ -19,7 +19,7 @@ const router = express.Router();
 // ── Category Routes ─────────────────────────────
 router.get("/categories", async (req, res) => {
   try {
-    const rows = await db.prepare("SELECT * FROM categories ORDER BY position ASC, name ASC").all();
+    const rows = await db.prepare("SELECT * FROM categories WHERE deleted_at IS NULL ORDER BY position ASC, name ASC").all();
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch categories" });
@@ -140,8 +140,7 @@ router.get("/", async (req, res) => {
       LEFT JOIN product_variants pv ON p.id = pv.product_id
     `;
     let params = [];
-
-    let where = [];
+    let where = ["p.deleted_at IS NULL"];
     if (category) {
       params.push(category);
       where.push(`p.category = $${params.length}`);
@@ -184,7 +183,7 @@ router.get("/:id", async (req, res) => {
       FROM   products p
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN product_variants pv ON pv.product_id = p.id
-      WHERE  p.id::text = $1 OR p.slug = $2
+      WHERE (p.id::text = $1 OR p.slug = $2) AND p.deleted_at IS NULL
       ORDER BY pv.id ASC
     `).all(req.params.id, req.params.id);
 
@@ -366,8 +365,11 @@ router.delete("/:id", requireOwner, async (req, res) => {
       }
     }
 
-    // Delete record unconditionally — foreign keys handle variant/image row cleanup
-    await db.prepare("DELETE FROM products WHERE id = $1").run(req.params.id);
+    // Soft delete record
+    await db.prepare("UPDATE products SET deleted_at = NOW(), slug = slug || '-' || $2 WHERE id = $1").run(req.params.id, Date.now().toString());
+    
+    // Also soft delete variants
+    await db.prepare("UPDATE product_variants SET deleted_at = NOW() WHERE product_id = $1").run(req.params.id);
     
     // Audit log
     await db.logAudit({
@@ -396,7 +398,7 @@ router.patch("/:id", requireOwner, async (req, res) => {
 
     // 1. Existence check
     const existing = await db
-      .prepare("SELECT * FROM products WHERE id = $1")
+      .prepare("SELECT * FROM products WHERE id = $1 AND deleted_at IS NULL")
       .get(req.params.id);
     if (!existing) return res.status(404).json({ error: "Product not found" });
 
@@ -551,10 +553,10 @@ router.post("/bulk-update", requireOwner, async (req, res) => {
       return res.status(400).json({ error: "A valid numerical value is required" });
     }
 
-    let query = "SELECT id, price_paise FROM products";
+    let query = "SELECT id, price_paise FROM products WHERE deleted_at IS NULL";
     let params = [];
     if (category_id) {
-      query += " WHERE category_id = $1";
+      query += " AND category_id = $1";
       params.push(category_id);
     }
     const products = await db.prepare(query).all(...params);

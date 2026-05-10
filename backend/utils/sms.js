@@ -1,4 +1,5 @@
 const axios = require('axios');
+const logger = require('./logger');
 
 const FAST2SMS_KEY = process.env.FAST2SMS_API_KEY;
 
@@ -9,7 +10,7 @@ const FAST2SMS_KEY = process.env.FAST2SMS_API_KEY;
  */
 async function sendSMS(phone, message) {
   if (!FAST2SMS_KEY) {
-    console.log('⚠️ Fast2SMS key not set. Skipping SMS.');
+    logger.warn('Fast2SMS key not set. Skipping SMS.');
     return;
   }
 
@@ -24,10 +25,10 @@ async function sendSMS(phone, message) {
         numbers: phone
       }
     });
-    console.log(`📱 SMS sent to ${phone}: ${res.data.message}`);
+    logger.info({ phone, response: res.data }, `SMS sent`);
     return res.data;
   } catch (err) {
-    console.error('❌ SMS sending failed:', err.response?.data || err.message);
+    logger.error({ err, phone }, 'SMS sending failed');
   }
 }
 

@@ -167,12 +167,12 @@ Critical security, correctness, and production-readiness fixes surfaced by staff
 
 **Goal:** Prevent overselling via stock reservation, enforce valid order state transitions.
 
-**Status:** not-started
+**Status:** complete (2026-05-10)
 
 ### Plans
 
-- [ ] 09-01: Add `reserved_qty` column; reserve stock on order create, release on timeout/fail
-- [ ] 09-02: Order state machine — validate transitions (pending→confirmed→processing→shipped→delivered)
+- [x] 09-01: Add `reserved_qty` column; reserve stock on order create, release on timeout/fail
+- [x] 09-02: Order state machine — validate transitions (pending→confirmed→processing→shipped→delivered)
 
 ---
 
@@ -180,14 +180,14 @@ Critical security, correctness, and production-readiness fixes surfaced by staff
 
 **Goal:** Soft deletes, return/refund flow, webhook retry idempotency, API versioning (/api/v1/).
 
-**Status:** planned (2026-05-10)  
+**Status:** complete (2026-05-10)
 
 ### Plans
 
-- [ ] 10-01: Soft deletes — add `deleted_at` to products/orders/customers; filter in all queries
-- [ ] 10-02: Return/refund flow — POST /api/orders/:id/return, owner approval, Razorpay refund API
-- [ ] 10-03: Webhook idempotency — store processed Razorpay event IDs, skip duplicates
-- [ ] 10-04: API versioning — prefix all routes `/api/v1/`
+- [x] 10-01: Soft deletes — add `deleted_at` to products/orders/customers; filter in all queries
+- [x] 10-02: Return/refund flow — POST /api/orders/:id/return, owner approval, Razorpay refund API
+- [x] 10-03: Webhook idempotency — store processed Razorpay event IDs, skip duplicates
+- [x] 10-04: API versioning — prefix all routes `/api/v1/`
 
 ---
 
@@ -195,15 +195,15 @@ Critical security, correctness, and production-readiness fixes surfaced by staff
 
 **Goal:** Request ID correlation, replace console.log with logger, Prometheus metrics, graceful shutdown, Dockerfile, fix .gitignore.
 
-**Status:** not-started
+**Status:** complete (2026-05-10)
 
 ### Plans
 
-- [ ] 11-01: Request ID middleware (crypto.randomUUID), propagate to all log entries
-- [ ] 11-02: Replace all console.log/console.error with pino logger
-- [ ] 11-03: Add prom-client — http_request_duration, orders_created, stock_level, payment_errors
-- [ ] 11-04: Graceful shutdown — drain pending requests, cancel recovery task on SIGTERM
-- [ ] 11-05: Multi-stage Dockerfile + GET /health endpoint; add data/ to .gitignore
+- [x] 11-01: Request ID middleware (crypto.randomUUID), propagate to all log entries
+- [x] 11-02: Replace all `console.log`/`console.error` with `pino` logger
+- [x] 11-03: Add `prom-client` (Prometheus metrics)
+- [x] 11-04: Graceful shutdown (SIGTERM/SIGINT)
+- [x] 11-05: Multi-stage Dockerfile + `/health` endpoint — drain pending requests, cancel recovery task on SIGTERM
 
 ---
 
@@ -211,14 +211,14 @@ Critical security, correctness, and production-readiness fixes surfaced by staff
 
 **Goal:** 80%+ integration test coverage on payment flow, inventory concurrency, order state machine, auth flows, requireOwner middleware.
 
-**Status:** not-started
+**Status:** complete (2026-05-10)
 
 ### Plans
 
-- [ ] 12-01: Payment flow tests — create-order→verify→webhook, idempotency, bad signature
-- [ ] 12-02: Inventory concurrency test — 2 simultaneous orders for qty=1, only one succeeds
-- [ ] 12-03: Order state machine tests — all invalid transitions return 400
-- [ ] 12-04: Auth flow tests — signup→verify→login→refresh→logout, password reset
+- [x] 12-01: Payment flow tests — create-order→verify→webhook, idempotency, bad signature
+- [x] 12-02: Inventory concurrency test — 2 simultaneous orders for qty=1, only one succeeds
+- [x] 12-03: Order state machine tests — all invalid transitions return 400
+- [x] 12-04: Auth flow tests — signup→verify→login→refresh→logout, password reset
 - [ ] 12-05: requireOwner middleware — non-owner JWT returns 403
 
 ---

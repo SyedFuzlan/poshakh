@@ -97,11 +97,11 @@ router.post("/signup", authLimiter, async (req, res) => {
 
     // Check for duplicate
     if (phone) {
-      const existing = await db.prepare("SELECT id FROM customers WHERE phone = $1").get(phone.trim());
+      const existing = await db.prepare("SELECT id FROM customers WHERE phone = $1 AND deleted_at IS NULL").get(phone.trim());
       if (existing) return res.status(409).json({ error: "An account with this phone number already exists" });
     }
     if (email) {
-      const existing = await db.prepare("SELECT id FROM customers WHERE email = $1").get(email.trim().toLowerCase());
+      const existing = await db.prepare("SELECT id FROM customers WHERE email = $1 AND deleted_at IS NULL").get(email.trim().toLowerCase());
       if (existing) return res.status(409).json({ error: "An account with this email already exists" });
     }
 
@@ -165,8 +165,8 @@ router.post("/login", authLimiter, async (req, res) => {
 
     const isPhone = /^\+?\d{7,}$/.test(identifier.trim());
     const row = isPhone
-      ? await db.prepare("SELECT * FROM customers WHERE phone = $1").get(identifier.trim())
-      : await db.prepare("SELECT * FROM customers WHERE email = $1").get(identifier.trim().toLowerCase());
+      ? await db.prepare("SELECT * FROM customers WHERE phone = $1 AND deleted_at IS NULL").get(identifier.trim())
+      : await db.prepare("SELECT * FROM customers WHERE email = $1 AND deleted_at IS NULL").get(identifier.trim().toLowerCase());
 
     // Constant-time path — no user enumeration
     if (!row || !(await bcrypt.compare(password, row.password_hash))) {
@@ -187,7 +187,7 @@ router.post("/login", authLimiter, async (req, res) => {
 // ── GET /api/customers/me ──────────────────────
 router.get("/me", requireCustomer, async (req, res) => {
   try {
-    const row = await db.prepare("SELECT * FROM customers WHERE id = $1").get(req.customer.id);
+    const row = await db.prepare("SELECT * FROM customers WHERE id = $1 AND deleted_at IS NULL").get(req.customer.id);
     if (!row) return res.status(404).json({ error: "Customer not found" });
     res.json({ customer: formatCustomer(row) });
   } catch (err) {
