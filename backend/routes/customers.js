@@ -3,6 +3,8 @@
 //  POST /api/customers/signup  — register
 //  POST /api/customers/login   — authenticate
 //  GET  /api/customers/me      — get own profile (requires customer JWT)
+//  POST /api/customers/refresh — rotate refresh token
+//  POST /api/customers/logout  — revoke refresh token
 // ──────────────────────────────────────────────
 const express = require("express");
 const bcrypt = require("bcryptjs");
@@ -10,6 +12,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const db = require("../db").db;
 const requireCustomer = require("../middleware/requireCustomer");
+const logger = require('../utils/logger');
 
 const router = express.Router();
 
@@ -29,12 +32,42 @@ function formatCustomer(row) {
   };
 }
 
-function signCustomerToken(id, phone) {
+function signAccessToken(id, phone) {
   return jwt.sign(
     { role: "customer", id, phone: phone || null },
     process.env.JWT_SECRET,
-    { expiresIn: "30d" }
+    { expiresIn: "15m" }
   );
+}
+
+function generateToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+function hashToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+// Issues access + refresh token pair. Sets httpOnly cookie and returns accessToken.
+function issueTokenPair(res, customerId, phone) {
+  const accessToken = signAccessToken(customerId, phone);
+  const rawRefresh = generateToken();
+  const refreshHash = hashToken(rawRefresh);
+  const refreshExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  db.prepare(
+    "INSERT INTO refresh_tokens (customer_id, token_hash, expires_at) VALUES (?, ?, ?)"
+  ).run(customerId, refreshHash, refreshExpiry);
+
+  res.cookie('refreshToken', rawRefresh, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/api/customers',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+
+  return accessToken;
 }
 
 // ── POST /api/customers/signup ─────────────────
@@ -77,11 +110,11 @@ router.post("/signup", async (req, res) => {
     );
 
     const row = db.prepare("SELECT * FROM customers WHERE id = ?").get(id);
-    const token = signCustomerToken(id, row.phone);
+    const accessToken = issueTokenPair(res, id, row.phone);
 
-    res.status(201).json({ success: true, token, customer: formatCustomer(row) });
+    res.status(201).json({ success: true, accessToken, customer: formatCustomer(row) });
   } catch (err) {
-    console.error("POST /api/customers/signup error:", err);
+    logger.error(err, 'POST /api/customers/signup error');
     res.status(500).json({ error: "Signup failed" });
   }
 });
@@ -108,10 +141,10 @@ router.post("/login", async (req, res) => {
     const now = new Date().toISOString();
     db.prepare("UPDATE customers SET last_login = ? WHERE id = ?").run(now, row.id);
 
-    const token = signCustomerToken(row.id, row.phone);
-    res.json({ success: true, token, customer: formatCustomer(row) });
+    const accessToken = issueTokenPair(res, row.id, row.phone);
+    res.json({ success: true, accessToken, customer: formatCustomer(row) });
   } catch (err) {
-    console.error("POST /api/customers/login error:", err);
+    logger.error(err, 'POST /api/customers/login error');
     res.status(500).json({ error: "Login failed" });
   }
 });
@@ -125,6 +158,50 @@ router.get("/me", requireCustomer, (req, res) => {
   } catch (err) {
     console.error("GET /api/customers/me error:", err);
     res.status(500).json({ error: "Failed to fetch profile" });
+  }
+});
+
+// ── POST /api/customers/refresh ────────────────
+router.post('/refresh', (req, res) => {
+  try {
+    const inbound = req.cookies?.refreshToken;
+    if (!inbound) return res.status(401).json({ error: 'No refresh token' });
+
+    const inboundHash = hashToken(inbound);
+    const row = db.prepare(
+      "SELECT * FROM refresh_tokens WHERE token_hash = ? AND expires_at > strftime('%Y-%m-%dT%H:%M:%SZ','now')"
+    ).get(inboundHash);
+
+    if (!row) return res.status(401).json({ error: 'Invalid or expired refresh token' });
+
+    // Rotation: delete old token row first
+    db.prepare("DELETE FROM refresh_tokens WHERE id = ?").run(row.id);
+
+    // Issue new token pair (inserts new refresh_tokens row + sets cookie)
+    const customer = db.prepare("SELECT id, phone FROM customers WHERE id = ?").get(row.customer_id);
+    if (!customer) return res.status(401).json({ error: 'Customer not found' });
+
+    const accessToken = issueTokenPair(res, customer.id, customer.phone);
+    res.json({ accessToken });
+  } catch (err) {
+    logger.error(err, 'POST /api/customers/refresh error');
+    res.status(500).json({ error: 'Token refresh failed' });
+  }
+});
+
+// ── POST /api/customers/logout ─────────────────
+router.post('/logout', (req, res) => {
+  try {
+    const inbound = req.cookies?.refreshToken;
+    if (inbound) {
+      const hash = hashToken(inbound);
+      db.prepare("DELETE FROM refresh_tokens WHERE token_hash = ?").run(hash);
+    }
+    res.clearCookie('refreshToken', { path: '/api/customers' });
+    res.json({ success: true });
+  } catch (err) {
+    logger.error(err, 'POST /api/customers/logout error');
+    res.status(500).json({ error: 'Logout failed' });
   }
 });
 
