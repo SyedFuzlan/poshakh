@@ -56,27 +56,18 @@ const checkoutLimiter = rateLimit({
   message: { error: "Too many requests, please try again later." },
 });
 
+const ALLOWED_ORIGINS = new Set([
+  'http://localhost:3000',
+  'http://localhost:9000',
+  'https://www.madebyzohra.in',
+  'https://madebyzohra.in',
+  ...(process.env.STORE_CORS || '').split(',').map(o => o.trim()).filter(Boolean),
+]);
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-
-      if (
-        origin.endsWith('.up.railway.app') ||
-        origin.endsWith('.vercel.app') ||
-        origin === 'http://localhost:3000' ||
-        origin === 'http://localhost:9000' ||
-        origin === 'https://www.madebyzohra.in' ||
-        origin === 'https://madebyzohra.in' ||
-        origin === 'https://www.www.madebyzohra.in'
-      ) {
-        return callback(null, true);
-      }
-
-      // Allow explicitly configured origins from env
-      const extras = (process.env.STORE_CORS || '').split(',').map(o => o.trim()).filter(Boolean);
-      if (extras.includes(origin)) return callback(null, true);
-
+      if (!origin || ALLOWED_ORIGINS.has(origin)) return callback(null, true);
       callback(new Error(`CORS: origin ${origin} not allowed`));
     },
     credentials: true,
