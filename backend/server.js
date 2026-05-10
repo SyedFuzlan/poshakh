@@ -60,6 +60,17 @@ const authLimiter = rateLimit({
   message: { error: "Too many login attempts, please try again later." }
 });
 
+// Loose limiter for the /api/customers prefix (covers /refresh, /logout, /me).
+// Tight authLimiter is applied per-route inside customers.js for signup, login,
+// forgot-password and reset-password.
+const refreshLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, please try again later." },
+});
+
 const checkoutLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,  // 15 minutes
   max: 20,
@@ -124,7 +135,10 @@ app.use("/dashboard", express.static(path.join(__dirname, "dashboard")));
 
 // ── Routes ──────────────────────────────────────
 app.use("/api/auth", authLimiter, require("./routes/auth"));
-app.use("/api/customers", authLimiter, require("./routes/customers"));
+// refreshLimiter covers all /api/customers/* routes (generous, DoS-resistant).
+// authLimiter is applied per-route inside customers.js for brute-force targets
+// (signup, login, forgot-password, reset-password).
+app.use("/api/customers", refreshLimiter, require("./routes/customers"));
 app.use("/api/products", require("./routes/products"));
 app.use("/api/orders", apiLimiter, require("./routes/orders"));
 app.use("/api/payments", apiLimiter, require("./routes/payments").router);
@@ -173,7 +187,12 @@ const PORT = parseInt(process.env.PORT || "9000", 10);
 // ── Graceful Shutdown ───────────────────────────
 const shutdown = async (signal) => {
   logger.info({ signal }, "Shutdown signal received");
-  // No explicit close for sql.js, but we can ensure process exits cleanly
+  try {
+    await db.close();
+    logger.info("Database pool closed");
+  } catch (err) {
+    logger.error(err, "Error closing database pool");
+  }
   process.exit(0);
 };
 
