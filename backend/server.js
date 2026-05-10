@@ -200,6 +200,17 @@ const PORT = parseInt(process.env.PORT || "9000", 10);
 
 let server;
 (async () => {
+  // Run migrations on startup
+  try {
+    console.log('[db] Running migrations...');
+    const { execSync } = require('child_process');
+    execSync('npx db-migrate up', { stdio: 'inherit' });
+    console.log('[db] Migrations completed.');
+  } catch (err) {
+    console.error('[db] Migration failed:', err.message);
+    // Continue anyway, or exit if critical
+  }
+
   await initDb();
   server = app.listen(PORT, () => {
     logger.info(`Poshakh API running on http://localhost:${PORT}`);
