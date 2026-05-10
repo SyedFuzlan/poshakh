@@ -13,6 +13,7 @@ const crypto = require("crypto");
 const db = require("../db").db;
 const requireCustomer = require("../middleware/requireCustomer");
 const logger = require('../utils/logger');
+const { sendVerificationEmail } = require('../utils/email');
 
 const router = express.Router();
 
@@ -96,21 +97,42 @@ router.post("/signup", async (req, res) => {
     const id = generateCustomerId();
     const now = new Date().toISOString();
 
-    db.prepare(`
-      INSERT INTO customers (id, first_name, last_name, phone, email, password_hash, last_login)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      id,
-      (firstName || "").trim(),
-      (lastName  || "").trim(),
-      phone ? phone.trim() : null,
-      email ? email.trim().toLowerCase() : null,
-      passwordHash,
-      now
-    );
+    // Generate email verification token before transaction
+    const rawVerifToken = generateToken();
+    const verifHash = hashToken(rawVerifToken);
+    const verifExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h
+
+    // Atomic: insert customer + verification token together
+    db.transaction(() => {
+      db.prepare(`
+        INSERT INTO customers (id, first_name, last_name, phone, email, password_hash, last_login)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        id,
+        (firstName || "").trim(),
+        (lastName  || "").trim(),
+        phone ? phone.trim() : null,
+        email ? email.trim().toLowerCase() : null,
+        passwordHash,
+        now
+      );
+
+      if (email) {
+        db.prepare(
+          "INSERT INTO email_verification_tokens (customer_id, token_hash, expires_at) VALUES (?, ?, ?)"
+        ).run(id, verifHash, verifExpiry);
+      }
+    })();
 
     const row = db.prepare("SELECT * FROM customers WHERE id = ?").get(id);
     const accessToken = issueTokenPair(res, id, row.phone);
+
+    // Send verification email outside transaction (non-blocking — failure does not roll back signup)
+    if (email) {
+      sendVerificationEmail(email.trim().toLowerCase(), rawVerifToken).catch((err) => {
+        logger.error(err, 'Email verification send failed for customer ' + id);
+      });
+    }
 
     res.status(201).json({ success: true, accessToken, customer: formatCustomer(row) });
   } catch (err) {
@@ -202,6 +224,34 @@ router.post('/logout', (req, res) => {
   } catch (err) {
     logger.error(err, 'POST /api/customers/logout error');
     res.status(500).json({ error: 'Logout failed' });
+  }
+});
+
+// ── GET /api/customers/verify-email ───────────
+router.get('/verify-email', (req, res) => {
+  try {
+    const { token } = req.query;
+    if (!token || typeof token !== 'string' || token.length !== 64) {
+      return res.status(400).json({ error: 'Invalid or missing token' });
+    }
+
+    const tokenHash = hashToken(token);
+    const row = db.prepare(
+      "SELECT * FROM email_verification_tokens WHERE token_hash = ? AND expires_at > strftime('%Y-%m-%dT%H:%M:%SZ','now')"
+    ).get(tokenHash);
+
+    if (!row) return res.status(400).json({ error: 'Invalid or expired verification token' });
+
+    // Mark verified and delete token atomically
+    db.transaction(() => {
+      db.prepare("UPDATE customers SET email_verified = 1 WHERE id = ?").run(row.customer_id);
+      db.prepare("DELETE FROM email_verification_tokens WHERE token_hash = ?").run(tokenHash);
+    })();
+
+    res.json({ verified: true });
+  } catch (err) {
+    logger.error(err, 'GET /api/customers/verify-email error');
+    res.status(500).json({ error: 'Verification failed' });
   }
 });
 
