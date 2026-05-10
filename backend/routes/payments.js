@@ -49,7 +49,7 @@ const logger = require("../utils/logger");
 
 // ── Save order to DB ────────────────────────────
 // Uses a flat orders table that stores address fields inline + items as JSON.
-function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOrderId, utr, orderData }) {
+async function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOrderId, utr, orderData }) {
   const {
     customer_name,
     customer_phone,
@@ -67,7 +67,7 @@ function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOrderId,
       : "paid";
 
   // Using db.transaction to ensure atomicity
-  return db.transaction(() => {
+  return db.transaction(async (client) => {
     let calculatedSubtotalPaise = 0;
     
     // 1. Verify stock and Recalculate Price for all items
@@ -76,11 +76,14 @@ function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOrderId,
         if (!item.product_id || !item.size) continue;
         
         // Fetch product and variant details from DB
-        const product = db.prepare(`SELECT price, price_paise FROM products WHERE id = ?`).get(item.product_id);
-        const variant = db.prepare(`
+        const productRes = await client.query(`SELECT price, price_paise FROM products WHERE id = $1`, [item.product_id]);
+        const product = productRes.rows[0];
+
+        const variantRes = await client.query(`
           SELECT stock FROM product_variants 
-          WHERE product_id = ? AND size = ?
-        `).get(item.product_id, item.size);
+          WHERE product_id = $1 AND size = $2
+        `, [item.product_id, item.size]);
+        const variant = variantRes.rows[0];
 
         if (!product || !variant) {
           logger.warn({ orderId, product_id: item.product_id, size: item.size }, "Product or variant not found");
@@ -114,7 +117,7 @@ function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOrderId,
     }
 
     // 2. Insert the order
-    db.prepare(`
+    await client.query(`
       INSERT INTO orders (
         id, razorpay_payment_id, razorpay_order_id, utr, payment_method,
         customer_name, customer_phone, customer_email,
@@ -122,13 +125,13 @@ function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOrderId,
         items_json, subtotal_paise, shipping_method, shipping_cost_paise,
         total_paise, total_amount, status
       ) VALUES (
-        ?, ?, ?, ?, ?,
-        ?, ?, ?,
-        ?, ?, ?, ?, ?,
-        ?, ?, ?, ?,
-        ?, ?, ?
+        $1, $2, $3, $4, $5,
+        $6, $7, $8,
+        $9, $10, $11, $12, $13,
+        $14, $15, $16, $17,
+        $18, $19, $20
       )
-    `).run(
+    `, [
       orderId,
       razorpayPaymentId || null,
       razorpayOrderId || null,
@@ -145,46 +148,48 @@ function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOrderId,
       JSON.stringify(items),
       calculatedSubtotalPaise,
       shipping_method,
-      shipping_cost, // Keep legacy if needed, but we should use paise
+      shipping_cost,
       calculatedTotalPaise,
       calculatedTotalPaise / 100,
       status
-    );
+    ]);
 
     // 3. Status History
-    db.prepare(`INSERT INTO order_status_history (order_id, status, comment) VALUES (?, ?, ?)`).run(
+    await client.query(`INSERT INTO order_status_history (order_id, status, comment) VALUES ($1, $2, $3)`, [
       orderId, status, `Order created via ${paymentMethod}`
-    );
+    ]);
 
     // 4. Items & Stock
     if (Array.isArray(items)) {
       for (const item of items) {
         if (item.product_id && item.size) {
           // Resolve price for item
-          const product = db.prepare(`SELECT price_paise, price FROM products WHERE id = ?`).get(item.product_id);
+          const productRes = await client.query(`SELECT price_paise, price FROM products WHERE id = $1`, [item.product_id]);
+          const product = productRes.rows[0];
           const pricePaise = (product?.price_paise != null) ? product.price_paise : Math.round((product?.price || 0) * 100);
           
           const qty = parseInt(item.quantity || 1, 10);
 
           // Insert into order_items table
-          db.prepare(`
+          await client.query(`
             INSERT INTO order_items (order_id, product_id, variant_id, name, quantity, price_paise, size, image)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-          `).run(orderId, item.product_id, item.variant_id, item.name, qty, pricePaise, item.size, item.image);
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          `, [orderId, item.product_id, item.variant_id, item.name, qty, pricePaise, item.size, item.image]);
 
           // Decrement stock in product_variants
-          db.prepare(`
+          await client.query(`
             UPDATE product_variants 
-            SET stock = stock - ? 
-            WHERE product_id = ? AND size = ?
-          `).run(qty, item.product_id, item.size);
+            SET stock = stock - $1 
+            WHERE product_id = $2 AND size = $3
+          `, [qty, item.product_id, item.size]);
 
           // Log inventory movement
-          const variant = db.prepare(`SELECT id FROM product_variants WHERE product_id = ? AND size = ?`).get(item.product_id, item.size);
+          const variantRes = await client.query(`SELECT id FROM product_variants WHERE product_id = $1 AND size = $2`, [item.product_id, item.size]);
+          const variant = variantRes.rows[0];
           if (variant) {
-            db.prepare(`INSERT INTO inventory_logs (variant_id, change, reason, order_id) VALUES (?, ?, ?, ?)`).run(
+            await client.query(`INSERT INTO inventory_logs (variant_id, change, reason, order_id) VALUES ($1, $2, $3, $4)`, [
               variant.id, -qty, 'sale', orderId
-            );
+            ]);
           }
         }
       }
@@ -264,7 +269,7 @@ router.post("/verify", async (req, res) => {
     }
 
     const orderId = generateOrderId();
-    saveOrder({
+    await saveOrder({
       orderId,
       paymentMethod: "razorpay",
       razorpayPaymentId: razorpay_payment_id,
@@ -286,7 +291,7 @@ router.post("/verify", async (req, res) => {
 });
 
 // ── POST /api/payments/upi-confirm ─────────────
-router.post("/upi-confirm", (req, res) => {
+router.post("/upi-confirm", async (req, res) => {
   try {
     const { utr, order_data } = req.body;
 
@@ -305,7 +310,7 @@ router.post("/upi-confirm", (req, res) => {
     }
 
     const orderId = generateOrderId();
-    saveOrder({
+    await saveOrder({
       orderId,
       paymentMethod: "upi",
       razorpayPaymentId: null,
