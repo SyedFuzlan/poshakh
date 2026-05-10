@@ -10,6 +10,7 @@ const path = require("path");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const compression = require("compression");
+const cookieParser = require('cookie-parser');
 const pinoHttp = require("pino-http");
 const { initDb, db } = require("./db");
 const logger = require("./utils/logger");
@@ -21,6 +22,17 @@ if (missing.length > 0) {
   console.error(`❌  Missing required env vars: ${missing.join(", ")}`);
   console.error("    Copy backend/.env.example to backend/.env and fill in the values.");
   process.exit(1);
+}
+
+// In production, email sending requires these two vars
+if (process.env.NODE_ENV === 'production') {
+  const prodRequired = ["RESEND_API_KEY", "APP_URL"];
+  const prodMissing = prodRequired.filter((k) => !process.env[k]);
+  if (prodMissing.length > 0) {
+    console.error(`❌  Missing required production env vars: ${prodMissing.join(", ")}`);
+    console.error("    Set RESEND_API_KEY (from resend.com/api-keys) and APP_URL (frontend URL).");
+    process.exit(1);
+  }
 }
 
 // ── App setup ───────────────────────────────────
@@ -74,6 +86,9 @@ app.use(
     credentials: true,
   })
 );
+
+// Parse cookies (required for httpOnly refresh token cookie)
+app.use(cookieParser());
 
 // Parse JSON bodies (except for the webhook route which needs raw)
 app.use((req, res, next) => {
