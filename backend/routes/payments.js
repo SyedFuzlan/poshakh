@@ -26,8 +26,8 @@ function getRazorpay() {
 
 // ── Generate unique order ID ────────────────────
 function generateOrderId() {
-  const ts = Date.now().toString(36).toUpperCase();
-  const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+  const ts   = Date.now().toString(36).toUpperCase();
+  const rand = crypto.randomBytes(3).toString("hex").toUpperCase(); // 6 hex chars
   return `PSK-${ts}-${rand}`;
 }
 
