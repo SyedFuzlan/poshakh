@@ -47,11 +47,12 @@ router.post('/', async (req, res) => {
  * This is called internally or by a cron endpoint
  */
 async function runRecoveryTask() {
+  // 1. Abandoned cart recovery — errors here must not block token cleanup.
   try {
     // Find checkouts updated more than 1 hour ago, still pending, and not notified in the last 24h
     const pendingCheckouts = await db.prepare(`
-      SELECT * FROM checkouts 
-      WHERE status = 'pending' 
+      SELECT * FROM checkouts
+      WHERE status = 'pending'
       AND updated_at < NOW() - INTERVAL '1 hour'
       AND (last_notified_at IS NULL OR last_notified_at < NOW() - INTERVAL '24 hours')
       LIMIT 10
@@ -72,16 +73,20 @@ async function runRecoveryTask() {
       // Update last_notified_at
       await db.prepare(`UPDATE checkouts SET last_notified_at = NOW() WHERE id = $1`)
         .run(checkout.id);
-      
+
       logger.info({ checkoutId: checkout.id, phone: checkout.customer_phone }, 'Abandoned cart recovery SMS sent');
     }
+  } catch (err) {
+    logger.error(err, 'Abandoned Cart Recovery Task Error');
+  }
 
-    // Clean up expired auth tokens to prevent table bloat
+  // 2. Token cleanup — independent block so a checkout-loop error cannot skip this.
+  try {
     await db.prepare("DELETE FROM refresh_tokens WHERE expires_at < NOW()").run();
     await db.prepare("DELETE FROM email_verification_tokens WHERE expires_at < NOW()").run();
     await db.prepare("DELETE FROM password_reset_tokens WHERE expires_at < NOW()").run();
   } catch (err) {
-    logger.error(err, 'Abandoned Cart Recovery Task Error');
+    logger.error(err, 'Token cleanup task error');
   }
 }
 
