@@ -24,13 +24,13 @@ if (missing.length > 0) {
   process.exit(1);
 }
 
-// In production, email sending requires these two vars
+// In production, email sending requires these vars
 if (process.env.NODE_ENV === 'production') {
-  const prodRequired = ["RESEND_API_KEY", "APP_URL"];
+  const prodRequired = ["RESEND_API_KEY", "APP_URL", "BACKEND_URL"];
   const prodMissing = prodRequired.filter((k) => !process.env[k]);
   if (prodMissing.length > 0) {
     console.error(`❌  Missing required production env vars: ${prodMissing.join(", ")}`);
-    console.error("    Set RESEND_API_KEY (from resend.com/api-keys) and APP_URL (frontend URL).");
+    console.error("    Set RESEND_API_KEY, APP_URL (frontend URL), and BACKEND_URL (backend API URL).");
     process.exit(1);
   }
 }

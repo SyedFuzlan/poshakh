@@ -24,7 +24,9 @@ const FROM = 'Poshakh <noreply@poshakh.in>';
  * @param {string} rawToken - The raw (unhashed) 64-char hex token to embed in the link
  */
 async function sendVerificationEmail(to, rawToken) {
-  const link = `${process.env.APP_URL || 'http://localhost:3000'}/api/customers/verify-email?token=${rawToken}`;
+  // Verification hits the BACKEND API endpoint directly, so use BACKEND_URL (not
+  // APP_URL which is the frontend origin). Fallback to port 9000 for local dev.
+  const link = `${process.env.BACKEND_URL || 'http://localhost:9000'}/api/customers/verify-email?token=${rawToken}`;
 
   if (process.env.NODE_ENV !== 'production') {
     console.log(`[DEV] Email verification link for ${to}: ${link}`);
