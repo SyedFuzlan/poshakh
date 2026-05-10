@@ -9,10 +9,18 @@ const bcrypt = require("bcryptjs");
 const requireOwner = require("../middleware/requireOwner");
 const logger = require("../utils/logger");
 
+const rateLimit = require("express-rate-limit");
+
 const router = express.Router();
 
+const authLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  message: { error: "Too many login attempts, please try again later." }
+});
+
 // POST /api/auth/login
-router.post("/login", async (req, res) => {
+router.post("/login", authLimiter, async (req, res) => {
   try {
     const { email, password } = req.body || {};
 

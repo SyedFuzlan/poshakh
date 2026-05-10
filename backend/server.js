@@ -87,12 +87,6 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-const authLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 10,
-  message: { error: "Too many login attempts, please try again later." }
-});
-
 // Loose limiter for the /api/customers prefix (covers /refresh, /logout, /me).
 // Tight authLimiter is applied per-route inside customers.js for signup, login,
 // forgot-password and reset-password.
@@ -169,7 +163,7 @@ app.use("/dashboard", express.static(path.join(__dirname, "dashboard")));
 // ── Routes ──────────────────────────────────────
 const v1 = express.Router();
 
-v1.use("/auth", authLimiter, require("./routes/auth"));
+v1.use("/auth", require("./routes/auth"));
 v1.use("/customers", refreshLimiter, require("./routes/customers"));
 v1.use("/products", require("./routes/products"));
 v1.use("/orders", apiLimiter, require("./routes/orders"));

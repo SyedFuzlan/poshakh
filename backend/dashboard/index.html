@@ -507,17 +507,31 @@ window.onload = async () => {
 
 // ── Auth ──────────────────────────────────────────────
 async function login() {
+  const btn = document.querySelector('.btn-login');
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
+  
+  if (!email || !password) return;
+  
+  const originalText = btn.textContent;
+  btn.textContent = 'SIGNING IN...';
+  btn.disabled = true;
+  
   try {
+    console.log('Attempting login for:', email);
     const r = await apiFetch('/api/auth/login', 'POST', { email, password });
     token = r.token;
     localStorage.setItem('poshakh_owner_token', token);
     showApp(r.email);
-  } catch {
+  } catch (err) {
+    console.error('Login error:', err);
     const el = document.getElementById('login-error');
+    el.textContent = err.message || 'Invalid credentials. Please try again.';
     el.style.display = 'block';
-    setTimeout(() => el.style.display = 'none', 3000);
+    setTimeout(() => el.style.display = 'none', 5000);
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
   }
 }
 document.addEventListener('keydown', e => {
