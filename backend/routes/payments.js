@@ -93,7 +93,7 @@ function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOrderId,
         }
 
         // Use price_paise if available, otherwise convert price to paise
-        const itemPricePaise = product.price_paise || Math.round(product.price * 100);
+        const itemPricePaise = (product.price_paise != null) ? product.price_paise : Math.round(product.price * 100);
         calculatedSubtotalPaise += itemPricePaise * (item.quantity || 1);
       }
     }
@@ -162,7 +162,7 @@ function saveOrder({ orderId, paymentMethod, razorpayPaymentId, razorpayOrderId,
         if (item.product_id && item.size) {
           // Resolve price for item
           const product = db.prepare(`SELECT price_paise, price FROM products WHERE id = ?`).get(item.product_id);
-          const pricePaise = product?.price_paise || Math.round((product?.price || 0) * 100);
+          const pricePaise = (product?.price_paise != null) ? product.price_paise : Math.round((product?.price || 0) * 100);
           
           const qty = parseInt(item.quantity || 1, 10);
 
@@ -317,6 +317,10 @@ router.post("/upi-confirm", (req, res) => {
     console.log(`📱 UPI order saved: ${orderId} | UTR: ${utr.trim()}`);
     res.json({ success: true, order_id: orderId });
   } catch (err) {
+    // UNIQUE constraint error = concurrent duplicate UTR attempt
+    if (err && String(err.message).includes("UNIQUE constraint failed: orders.utr")) {
+      return res.status(409).json({ success: false, error: "Duplicate UTR — order already exists" });
+    }
     console.error("POST /api/payments/upi-confirm error:", err);
     res.status(500).json({ success: false, error: "Failed to save UPI order" });
   }
