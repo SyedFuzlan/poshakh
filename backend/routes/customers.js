@@ -305,6 +305,12 @@ router.post('/forgot-password', authLimiter, async (req, res) => {
       const tokenHash = hashToken(rawToken);
       const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 minutes
 
+      // Invalidate any existing reset tokens before issuing a new one so that
+      // a prior intercepted link cannot be used alongside the new one.
+      await db.prepare(
+        "DELETE FROM password_reset_tokens WHERE customer_id = $1"
+      ).run(customer.id);
+
       await db.prepare(
         "INSERT INTO password_reset_tokens (customer_id, token_hash, expires_at) VALUES ($1, $2, $3)"
       ).run(customer.id, tokenHash, expiresAt);
