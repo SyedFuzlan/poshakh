@@ -105,8 +105,10 @@ const ALLOWED_ORIGINS = new Set([
   'http://localhost:9000',
   'https://www.madebyzohra.in',
   'https://madebyzohra.in',
+  process.env.BACKEND_URL,
+  process.env.APP_URL,
   ...(process.env.STORE_CORS || '').split(',').map(o => o.trim()).filter(Boolean),
-]);
+].filter(Boolean).map(o => o.replace(/\/$/, '')));
 
 app.use(
   cors({
