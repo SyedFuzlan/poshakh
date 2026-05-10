@@ -279,57 +279,6 @@
         <!-- Phase 01: sizes & stock -->
         <div class="full">
           <label class="pf-label">Sizes &amp; Stock <span style="color:var(--error)">*</span></label>
-          <script>
-            function toggleNewStock(cb) {
-              const row = cb.closest('.size-row');
-              const ctrl = document.getElementById(cb.id.replace('size-', 'new-stock-ctrl-'));
-              if (cb.checked) {
-                if (ctrl) ctrl.style.display = 'flex';
-                row.style.borderColor = 'var(--maroon)';
-                row.style.background = 'var(--cream-warm)';
-              } else {
-                if (ctrl) ctrl.style.display = 'none';
-                const stockInput = document.getElementById(cb.id.replace('size-', 'stock-'));
-                if (stockInput) stockInput.value = '0';
-                row.style.borderColor = 'var(--border-subtle)';
-                row.style.background = '#f7f4f0';
-              }
-            }
-            function adjustNewStock(sz, delta) {
-              const input = document.getElementById('stock-' + sz);
-              if (!input) return;
-              const val = parseInt(input.value || '0', 10);
-              input.value = Math.max(0, val + delta);
-            }
-            function addCustomSize(containerId, inputId, prefix) {
-              const input = document.getElementById(inputId);
-              const val = (input.value || '').trim();
-              if (!val) return;
-              
-              if (document.getElementById(prefix + 'size-' + val)) {
-                alert('Size already exists');
-                return;
-              }
-              
-              const container = document.getElementById(containerId);
-              const html = `
-                <div class="size-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--cream-warm);border:1px solid var(--maroon);border-radius:4px;padding:8px 12px;margin-bottom:8px">
-                  <div style="display:flex;align-items:center;gap:8px;flex:1">
-                    <input type="checkbox" id="${prefix}size-${val}" name="${prefix}sizes[]" value="${val}" checked onchange="${prefix ? 'emToggleStock(this)' : 'toggleNewStock(this)'}" style="width:16px;height:16px;accent-color:var(--maroon);cursor:pointer"/>
-                    <label for="${prefix}size-${val}" style="font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;min-width:36px">${val}</label>
-                  </div>
-                  <div id="${prefix}new-stock-ctrl-${val}" style="display:flex;align-items:center;gap:4px">
-                    <span style="font-size:10px;color:#888;margin-right:4px">Stock:</span>
-                    <button type="button" onclick="${prefix ? 'adjustStock' : 'adjustNewStock'}('${val}', -1)" style="width:28px;height:28px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer;font-weight:bold">-</button>
-                    <input type="number" id="${prefix}stock-${val}" name="${prefix}stock[]" min="0" value="0" style="width:50px;height:28px;border:1px solid #ddd;border-radius:4px;text-align:center;font-size:12px"/>
-                    <button type="button" onclick="${prefix ? 'adjustStock' : 'adjustNewStock'}('${val}', 1)" style="width:28px;height:28px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer;font-weight:bold">+</button>
-                  </div>
-                </div>
-              `;
-              container.insertAdjacentHTML('beforeend', html);
-              input.value = '';
-            }
-          </script>
           <div id="new-sizes-container" style="display:flex;flex-direction:column;gap:8px">
             <div class="size-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:#f7f4f0;border:1px solid var(--border-subtle);border-radius:4px;padding:8px 12px">
               <div style="display:flex;align-items:center;gap:8px;flex:1">
@@ -487,6 +436,7 @@
 </div>
 
 <script>
+console.log('Admin Dashboard script loading...');
 const API = '';  // same origin
 let token = localStorage.getItem('poshakh_owner_token') || '';
 let allOrders = [];
@@ -1505,6 +1455,51 @@ async function submitBulkUpdate() {
     loadStats();
   } catch (e) { alert(e.message); }
 }
+// ── Stock Management ─────────────────
+function toggleNewStock(cb) {
+  const row = cb.closest('.size-row');
+  const ctrl = document.getElementById(cb.id.replace('size-', 'new-stock-ctrl-'));
+  if (cb.checked) {
+    if (ctrl) ctrl.style.display = 'flex';
+    row.style.borderColor = 'var(--maroon)';
+    row.style.background = 'var(--cream-warm)';
+  } else {
+    if (ctrl) ctrl.style.display = 'none';
+    const stockInput = document.getElementById(cb.id.replace('size-', 'stock-'));
+    if (stockInput) stockInput.value = '0';
+    row.style.borderColor = 'var(--border-subtle)';
+    row.style.background = '#f7f4f0';
+  }
+}
+function adjustNewStock(sz, delta) {
+  const input = document.getElementById('stock-' + sz);
+  if (!input) return;
+  const val = parseInt(input.value || '0', 10);
+  input.value = Math.max(0, val + delta);
+}
+function addCustomSize(containerId, inputId, prefix) {
+  const input = document.getElementById(inputId);
+  const val = (input.value || '').trim();
+  if (!val) return;
+  if (document.getElementById(prefix + 'size-' + val)) { alert('Size already exists'); return; }
+  const container = document.getElementById(containerId);
+  const html = `
+    <div class="size-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--cream-warm);border:1px solid var(--maroon);border-radius:4px;padding:8px 12px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:8px;flex:1">
+        <input type="checkbox" id="${prefix}size-${val}" name="${prefix}sizes[]" value="${val}" checked onchange="${prefix ? 'emToggleStock(this)' : 'toggleNewStock(this)'}" style="width:16px;height:16px;accent-color:var(--maroon);cursor:pointer"/>
+        <label for="${prefix}size-${val}" style="font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;min-width:36px">${val}</label>
+      </div>
+      <div id="${prefix}new-stock-ctrl-${val}" style="display:flex;align-items:center;gap:4px">
+        <span style="font-size:10px;color:#888;margin-right:4px">Stock:</span>
+        <button type="button" onclick="${prefix ? 'adjustStock' : 'adjustNewStock'}('${val}', -1)" style="width:28px;height:28px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer;font-weight:bold">-</button>
+        <input type="number" id="${prefix}stock-${val}" name="${prefix}stock[]" min="0" value="0" style="width:50px;height:28px;border:1px solid #ddd;border-radius:4px;text-align:center;font-size:12px"/>
+        <button type="button" onclick="${prefix ? 'adjustStock' : 'adjustNewStock'}('${val}', 1)" style="width:28px;height:28px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer;font-weight:bold">+</button>
+      </div>
+    </div>`;
+  container.insertAdjacentHTML('beforeend', html);
+  input.value = '';
+}
+console.log('Admin Dashboard script fully loaded.');
 </script>
 </body>
 </html>
