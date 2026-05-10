@@ -78,8 +78,9 @@ async function initDb() {
     console.log('[db] PostgreSQL connected successfully');
     return pool;
   } catch (err) {
-    console.error('[db] PostgreSQL connection failed:', err.message);
-    throw err;
+    console.error('[db] PostgreSQL connection failed at startup:', err.message);
+    // Don't throw, let health check report it
+    return pool;
   }
 }
 

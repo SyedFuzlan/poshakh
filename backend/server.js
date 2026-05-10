@@ -41,13 +41,7 @@ if (process.env.NODE_ENV === 'production') {
 const app = express();
 
 // Security, Logging and Performance
-app.use(pinoHttp({ 
-  logger,
-  genReqId: (req) => req.headers["x-request-id"] || crypto.randomUUID(),
-  customProps: (req, res) => ({
-    requestId: req.id
-  })
-}));
+app.use(pinoHttp({ logger }));
 
 // Propagate Request ID to headers
 app.use((req, res, next) => {
