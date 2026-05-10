@@ -73,7 +73,14 @@ async function logAudit({ adminId, action, details, oldValue, newValue }) {
 
 async function initDb() {
   console.log('[db] PostgreSQL init');
-  return pool;
+  try {
+    const res = await pool.query('SELECT 1');
+    console.log('[db] PostgreSQL connected successfully');
+    return pool;
+  } catch (err) {
+    console.error('[db] PostgreSQL connection failed:', err.message);
+    throw err;
+  }
 }
 
 function saveDb() {

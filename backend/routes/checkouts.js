@@ -119,12 +119,12 @@ async function runRecoveryTask() {
   try {
     await releaseExpiredReservations();
   } catch (err) {
+    console.error('Inventory Reservation Release Error:', err);
     logger.error(err, 'Inventory Reservation Release Error');
   }
 
   // 2. Abandoned cart recovery
   try {
-    // Find checkouts updated more than 1 hour ago, still pending, and not notified in the last 24h
     const pendingCheckouts = await db.prepare(`
       SELECT * FROM checkouts
       WHERE status = 'pending'
@@ -137,20 +137,19 @@ async function runRecoveryTask() {
       const items = JSON.parse(checkout.items_json || '[]');
       if (items.length === 0) continue;
 
-      // Sanitise before interpolation
       const rawName = (checkout.customer_name || '').replace(/[^a-zA-Z\s'-]/g, '').trim();
       const firstName = (rawName.split(' ')[0] || 'there').slice(0, 30);
       const msg = `Hi ${firstName}, you left something beautiful in your cart at MadeByZohra! Complete your order now: https://madebyzohra.in/checkout?id=${checkout.id}. Team Zohra`;
 
       await sendSMS(checkout.customer_phone, msg);
 
-      // Update last_notified_at
       await db.prepare(`UPDATE checkouts SET last_notified_at = NOW() WHERE id = $1`)
         .run(checkout.id);
 
       logger.info({ checkoutId: checkout.id, phone: checkout.customer_phone }, 'Abandoned cart recovery SMS sent');
     }
   } catch (err) {
+    console.error('Abandoned Cart Recovery Task Error:', err);
     logger.error(err, 'Abandoned Cart Recovery Task Error');
   }
 
@@ -160,6 +159,7 @@ async function runRecoveryTask() {
     await db.prepare("DELETE FROM email_verification_tokens WHERE expires_at < NOW()").run();
     await db.prepare("DELETE FROM password_reset_tokens WHERE expires_at < NOW()").run();
   } catch (err) {
+    console.error('Token cleanup task error:', err);
     logger.error(err, 'Token cleanup task error');
   }
 }
