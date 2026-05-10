@@ -128,14 +128,22 @@ Critical security, correctness, and production-readiness fixes surfaced by staff
 
 **Goal:** Replace 30-day JWT with short-lived access + refresh tokens, add logout endpoint, email verification, password reset.
 
-**Status:** not-started
+**Status:** not-started  
+**Plans:** 4 plans in 2 waves
 
-### Plans
+### Wave 1 (parallel — no shared files)
+- [ ] 07-01-PLAN.md — DB schema foundation: 3 token tables in db.js, cookie-parser in server.js, RESEND_API_KEY + APP_URL in .env.example
+- [ ] 07-02-PLAN.md — Refresh token system: replace signCustomerToken (30d) with signAccessToken (15m) + issueTokenPair helper, update login/signup, add POST /refresh + POST /logout endpoints
 
-- [ ] 07-01: Refresh token system (15min access + 7d refresh, POST /api/auth/refresh)
-- [ ] 07-02: Logout endpoint — invalidate refresh token in DB
-- [ ] 07-03: Email verification flow on signup
-- [ ] 07-04: Password reset flow (forgot → token email → reset endpoint)
+### Wave 2 *(blocked on Wave 1 completion)*
+- [ ] 07-03-PLAN.md — Email utility (utils/email.js) + email verification: signup transaction wrapping, POST /verify-email endpoint
+- [ ] 07-04-PLAN.md — Password reset: POST /forgot-password (anti-enumeration), POST /reset-password (single-use token), runRecoveryTask token cleanup
+
+**Cross-cutting constraints:**
+- Plans 01 and 02 target different files (db.js/server.js vs customers.js) — safe to run in parallel
+- Plans 03 and 04 both modify customers.js — must run sequentially (Plan 03 before Plan 04) or as a merged execution
+- Plan 03 depends on Plan 02 (issueTokenPair, hashToken, generateToken helpers must exist)
+- Plan 04 depends on Plan 02 (hashToken, generateToken helpers) and Plan 03 (sendPasswordResetEmail import)
 
 ---
 
