@@ -99,6 +99,17 @@ app.use(
   })
 );
 
+// Restrictive CSP for the owner dashboard (highest-privilege route)
+app.use("/dashboard", helmet.contentSecurityPolicy({
+  directives: {
+    defaultSrc: ["'self'"],
+    scriptSrc: ["'self'"],
+    styleSrc: ["'self'", "'unsafe-inline'"],
+    imgSrc: ["'self'", "data:"],
+    connectSrc: ["'self'"],
+  },
+}));
+
 // Serve the owner dashboard as a static HTML file
 app.use("/dashboard", express.static(path.join(__dirname, "dashboard")));
 
