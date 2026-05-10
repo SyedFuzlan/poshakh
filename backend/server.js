@@ -79,7 +79,10 @@ app.use((req, res, next) => {
   if (req.path === "/api/payments/webhook") return next();
   express.json({ limit: "10mb" })(req, res, next);
 });
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use((req, res, next) => {
+  if (req.path === "/api/payments/webhook") return next();
+  express.urlencoded({ extended: true, limit: "10mb" })(req, res, next);
+});
 
 // Serve uploaded images as static files
 app.use(
