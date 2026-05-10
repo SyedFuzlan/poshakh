@@ -128,8 +128,8 @@ Critical security, correctness, and production-readiness fixes surfaced by staff
 
 **Goal:** Replace 30-day JWT with short-lived access + refresh tokens, add logout endpoint, email verification, password reset.
 
-**Status:** not-started  
-**Plans:** 4 plans in 2 waves
+**Status:** planned (2026-05-10)  
+**Plans:** 4 plans in 3 waves
 
 ### Wave 1 (parallel — no shared files)
 - [ ] 07-01-PLAN.md — DB schema foundation: 3 token tables in db.js, cookie-parser in server.js, RESEND_API_KEY + APP_URL in .env.example

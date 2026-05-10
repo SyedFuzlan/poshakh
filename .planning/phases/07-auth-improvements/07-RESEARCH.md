@@ -582,27 +582,31 @@ Note: The project has no automated test infrastructure. Phase 12 (Test Suite) is
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Is `RESEND_API_KEY` already available?**
    - What we know: Medusa code used Resend with `noreply@poshakh.in`
    - What's unclear: Whether the Resend account was set up, whether the domain is verified, whether the API key is accessible
    - Recommendation: Planner should add a Wave 0 task to confirm Resend account status; if unavailable, fall back to nodemailer + any SMTP (Gmail, SendGrid) as a temporary measure
+   - **RESOLVED:** Plan 03 installs `resend` package and implements a dev-mode guard (`NODE_ENV !== 'production'` → log link to console, skip API call). Missing `RESEND_API_KEY` does not break development or testing.
 
 2. **Does logout also need to invalidate the access token?**
    - What we know: Access tokens are stateless — a valid 15min token cannot be invalidated without a blocklist
    - What's unclear: Whether the product requires immediate logout (stateless JWT means a 15min window of use after logout)
    - Recommendation: For this phase, accept the 15min window — it's standard practice. A blocklist (Redis or SQLite) can be added in Phase 12 if needed.
+   - **RESOLVED:** 15-minute window accepted. Plan 02 threat model (T-07-02-02) documents this as a known, accepted tradeoff. Access token blocklist deferred to Phase 12.
 
 3. **Should email verification be required before login is allowed?**
    - What we know: ROADMAP says "email verification flow on signup" but does not specify whether unverified users are blocked
    - What's unclear: Whether blocking unverified users is in scope for Phase 07 or deferred
    - Recommendation: Default to non-blocking (issue tokens immediately on signup, verification is advisory). If blocking is required, add `email_verified` check to login handler and note it clearly in Plan 07-03.
+   - **RESOLVED:** Non-blocking chosen. Tokens issued immediately on signup; `email_verified` flag is advisory in Phase 07. Blocking verification can be added in a future phase if required.
 
 4. **`APP_URL` env var for building email links**
    - What we know: Not in `.env.example`, not in `server.js` required list
    - What's unclear: What URL to use for the verification link on the email (backend vs. frontend URL)
    - Recommendation: Add `APP_URL` to `.env.example` defaulting to `http://localhost:3000` (frontend) since the reset password link should direct users to a frontend page, not a raw API endpoint.
+   - **RESOLVED:** Plan 01 (Task 3) adds `APP_URL=http://localhost:3000` to `.env.example`. Verification links point to the frontend URL so the reset-password page can render a form.
 
 ---
 

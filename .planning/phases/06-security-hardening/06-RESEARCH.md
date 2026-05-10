@@ -443,22 +443,19 @@ Add this line in the `safeMigrate` block in `db.js` (after line 286, after the e
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **OWNER_PASSWORD_HASH migration path for live system**
+1. **OWNER_PASSWORD_HASH migration path for live system** — RESOLVED
    - What we know: `auth.js` currently uses `OWNER_PASSWORD` (plaintext). After 06-01, it reads `OWNER_PASSWORD_HASH`.
-   - What's unclear: Does the owner change their `.env` manually, or should there be a one-time migration script?
-   - Recommendation: Include `node -e "..."` hash generation command in the plan. Update `.env.example` to show `OWNER_PASSWORD_HASH`. Add a startup validation that errors if `OWNER_PASSWORD_HASH` is missing.
+   - Resolution: Include `node -e "require('bcryptjs').hash('YourPassword', 12).then(h => console.log('OWNER_PASSWORD_HASH=' + h))"` hash generation command in the plan. Update `.env.example` to show `OWNER_PASSWORD_HASH`. Add a startup validation in `server.js` required[] check that errors if `OWNER_PASSWORD_HASH` is missing.
 
-2. **Signup rate limit: 10/hr adequate?**
+2. **Signup rate limit: 10/hr adequate?** — RESOLVED
    - What we know: `authLimiter` (10/hr) already covers `/api/customers/signup` via the parent mount.
-   - What's unclear: Is 10 signups per IP per hour too restrictive for family/shared network scenarios?
-   - Recommendation: Keep as-is in Phase 06 (it's already applied). Flag for Phase 07 if users report lockouts. Out of Phase 06 scope.
+   - Resolution: Keep as-is in Phase 06 (it's already applied). Flag for Phase 07 if users report lockouts. Out of Phase 06 scope.
 
-3. **Webhook reject vs. ignore on missing RAZORPAY_WEBHOOK_SECRET**
+3. **Webhook reject vs. ignore on missing RAZORPAY_WEBHOOK_SECRET** — RESOLVED
    - What we know: Current behavior returns `200 ignored`. Phase 06-02 changes it to `500`.
-   - What's unclear: Should it be `500` (server misconfiguration) or `400` (bad request)?
-   - Recommendation: Use `500` — the problem is on the server side (missing config), not with the request itself. Razorpay will retry on 5xx, which surfaces the misconfiguration in Razorpay's dashboard.
+   - Resolution: Use `500` — the problem is on the server side (missing config), not with the request itself. Razorpay will retry on 5xx, which surfaces the misconfiguration in Razorpay's dashboard.
 
 ---
 

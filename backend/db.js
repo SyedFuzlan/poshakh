@@ -317,6 +317,10 @@ async function initDb() {
     'ON orders(razorpay_payment_id) WHERE razorpay_payment_id IS NOT NULL'
   );
   safeMigrate('ALTER TABLE customers ADD COLUMN email_verified INTEGER DEFAULT 0');
+  safeMigrate(
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_utr ' +
+    'ON orders(utr) WHERE utr IS NOT NULL'
+  );
 
   // Create default category if none exists
   try {
