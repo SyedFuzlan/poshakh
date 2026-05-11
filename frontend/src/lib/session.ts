@@ -1,7 +1,8 @@
 import { createHmac } from "crypto";
 
-const SECRET = process.env.COOKIE_SECRET;
-if (!SECRET) throw new Error("COOKIE_SECRET environment variable is required");
+const _rawSecret = process.env.COOKIE_SECRET;
+if (!_rawSecret) throw new Error("COOKIE_SECRET environment variable is required");
+const SECRET: string = _rawSecret;
 
 export function createSignedCookie(data: object): string {
   const payload = Buffer.from(JSON.stringify(data)).toString("base64url");

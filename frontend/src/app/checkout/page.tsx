@@ -529,7 +529,7 @@ export default function CheckoutPage() {
                   {paying ? "PLACING ORDER..." : `CASH ON DELIVERY (COD)`}
                 </button>
 
-                {process.env.NEXT_PUBLIC_DEV_SIMULATE === "true" && (
+                {process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_DEV_SIMULATE === "true" && (
                   <button
                     onClick={() => finishOrder(`pay_dev_${Date.now()}`)}
                     style={{ padding: "12px", border: "1px solid #d1d5db", background: "#f9f9f9", cursor: "pointer", fontSize: "12px", color: "#888", letterSpacing: "1px", textTransform: "uppercase" }}
