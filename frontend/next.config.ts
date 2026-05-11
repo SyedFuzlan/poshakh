@@ -32,7 +32,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https: blob:",
               "frame-src https://api.razorpay.com https://checkout.razorpay.com",
-              "connect-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://cdn.razorpay.com https://poshakh-production.up.railway.app https://us-assets.i.posthog.com https://us.i.posthog.com",
+              "connect-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://cdn.razorpay.com https://lumberjack.razorpay.com https://poshakh-production.up.railway.app https://us-assets.i.posthog.com https://us.i.posthog.com",
               "font-src 'self' data:",
             ].join("; "),
           },
