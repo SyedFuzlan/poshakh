@@ -99,6 +99,9 @@ jobs:
         env:
           NEXT_PUBLIC_MEDUSA_BACKEND_URL: http://localhost:9000
           NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ""
+          COOKIE_SECRET: ci-cookie-secret-minimum-32-chars-long
+          API_URL: https://poshakh-production.up.railway.app
+          NEXT_PUBLIC_API_URL: https://poshakh-production.up.railway.app
 
   e2e:
     name: Frontend — E2E tests
