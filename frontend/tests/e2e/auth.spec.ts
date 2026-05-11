@@ -11,7 +11,7 @@ test.describe('Auth', () => {
     await page.goto('/')
     await page.waitForLoadState('networkidle')
     await page.getByRole('button', { name: 'Account' }).click()
-    await expect(page.getByText('ACCOUNT')).toBeVisible()
+    await expect(page.getByText('ACCOUNT', { exact: true })).toBeVisible()
     await expect(page.getByPlaceholder('Phone or Email')).toBeVisible()
     await expect(page.getByPlaceholder('Password')).toBeVisible()
   })
@@ -86,10 +86,10 @@ test.describe('Auth', () => {
     await page.goto('/')
     await page.waitForLoadState('networkidle')
     await page.getByRole('button', { name: 'Account' }).click()
-    await expect(page.getByText('ACCOUNT')).toBeVisible()
+    await expect(page.getByText('ACCOUNT', { exact: true })).toBeVisible()
 
     await page.getByRole('button', { name: /Close/i }).click()
-    await expect(page.getByText('ACCOUNT')).not.toBeVisible()
+    await expect(page.getByText('ACCOUNT', { exact: true })).not.toBeVisible()
   })
 
   test('logged-in user clicking account goes to /account', async ({ page }) => {

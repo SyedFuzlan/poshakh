@@ -72,7 +72,7 @@ test.describe('Account — order history', () => {
     await page.getByRole('button', { name: /View details/i }).click()
 
     await expect(page.getByText('Test Silk Saree')).toBeVisible()
-    await expect(page.getByText(/Hyderabad/)).toBeVisible()
+    await expect(page.getByText(/Hyderabad, Telangana/).first()).toBeVisible()
   })
 
   test('shows profile info alongside orders', async ({ page }) => {

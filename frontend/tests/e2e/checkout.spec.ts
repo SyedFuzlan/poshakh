@@ -128,7 +128,7 @@ test.describe('Checkout', () => {
     await seedCart(page)
     await page.goto('/checkout')
     await expect(page.getByText('Test Silk Saree')).toBeVisible()
-    await expect(page.getByText('₹5,000')).toBeVisible()
+    await expect(page.getByText('₹5,000').first()).toBeVisible()
   })
 
   test('change link on step 2 goes back to step 1', async ({ page }) => {
