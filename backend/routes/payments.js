@@ -10,6 +10,7 @@ const crypto = require("crypto");
 const Razorpay = require("razorpay");
 const db = require("../db").db;
 const { notifyOrderConfirmed } = require("../utils/sms");
+const { sendOrderConfirmationEmail } = require("../utils/email");
 
 const router = express.Router();
 
@@ -222,8 +223,14 @@ async function saveOrder({ orderId, checkoutId, paymentMethod, razorpayPaymentId
 
     logger.info({ orderId, total: calculatedTotalPaise / 100, method: paymentMethod }, "Order saved successfully");
     
-    // Async notification
+    // Async notifications — fire and forget, never block the transaction
     notifyOrderConfirmed(customer_phone, customer_name, orderId, calculatedTotalPaise / 100);
+    sendOrderConfirmationEmail(customer_email || null, {
+      orderId,
+      items,
+      total: calculatedTotalPaise / 100,
+      customerName: customer_name,
+    }).catch(err => logger.error(err, 'Order confirmation email error'));
 
     return orderId;
   });
@@ -303,7 +310,7 @@ async function handleVerify(req, res) {
       return res.status(400).json({ success: false, error: "Payment verification failed" });
     }
 
-    const existing = db
+    const existing = await db
       .prepare("SELECT id FROM orders WHERE razorpay_payment_id = ?")
       .get(razorpay_payment_id);
 
@@ -348,7 +355,7 @@ router.post("/upi-confirm", async (req, res) => {
       return res.status(400).json({ error: validationError });
     }
 
-    const existing = db.prepare("SELECT id FROM orders WHERE utr = ?").get(utr.trim());
+    const existing = await db.prepare("SELECT id FROM orders WHERE utr = ?").get(utr.trim());
     if (existing) {
       return res.json({ success: true, order_id: existing.id, duplicate: true });
     }
