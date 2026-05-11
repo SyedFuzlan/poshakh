@@ -16,6 +16,15 @@ const { initDb, db } = require("./db");
 const logger = require("./utils/logger");
 const crypto = require("crypto");
 const { register, httpRequestDurationMicroseconds } = require("./utils/metrics");
+const Sentry = require("@sentry/node");
+
+// ── Sentry ─────────────────────────────────────
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV || "development",
+  });
+}
 
 // ── Env validation ──────────────────────────────
 const required = ["OWNER_EMAIL", "OWNER_PASSWORD_HASH", "JWT_SECRET"];
@@ -193,6 +202,7 @@ app.use((_req, res) => {
 
 // Global error handler
 app.use((err, _req, res, _next) => {
+  if (process.env.SENTRY_DSN) Sentry.captureException(err);
   logger.error(err, "Unhandled error");
   res.status(500).json({ error: "Internal server error" });
 });
