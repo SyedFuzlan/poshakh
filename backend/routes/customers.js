@@ -191,7 +191,7 @@ router.get("/me", requireCustomer, async (req, res) => {
     if (!row) return res.status(404).json({ error: "Customer not found" });
     res.json({ customer: formatCustomer(row) });
   } catch (err) {
-    console.error("GET /api/customers/me error:", err);
+    logger.error(err, 'GET /api/customers/me error');
     res.status(500).json({ error: "Failed to fetch profile" });
   }
 });

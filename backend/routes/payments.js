@@ -299,6 +299,7 @@ async function handleVerify(req, res) {
       .digest("hex");
 
     if (expectedSig !== razorpay_signature) {
+      logger.warn({ razorpay_order_id, razorpay_payment_id }, 'Payment signature mismatch — possible tampering attempt');
       return res.status(400).json({ success: false, error: "Payment verification failed" });
     }
 
@@ -321,7 +322,7 @@ async function handleVerify(req, res) {
       orderData: order_data,
     });
 
-    console.log(`✅ Order saved: ${orderId} | Payment: ${razorpay_payment_id}`);
+    logger.info({ orderId, paymentId: razorpay_payment_id }, 'Order saved via Razorpay');
     res.json({ success: true, order_id: orderId });
   } catch (err) {
     // UNIQUE constraint error = concurrent duplicate payment attempt
@@ -363,14 +364,14 @@ router.post("/upi-confirm", async (req, res) => {
       orderData: order_data,
     });
 
-    console.log(`📱 UPI order saved: ${orderId} | UTR: ${utr.trim()}`);
+    logger.info({ orderId, utr: utr.trim() }, 'UPI order saved');
     res.json({ success: true, order_id: orderId });
   } catch (err) {
     // UNIQUE constraint error = concurrent duplicate UTR attempt
     if (err && String(err.message).includes("UNIQUE constraint failed: orders.utr")) {
       return res.status(409).json({ success: false, error: "Duplicate UTR — order already exists" });
     }
-    console.error("POST /api/payments/upi-confirm error:", err);
+    logger.error(err, 'POST /api/payments/upi-confirm error');
     res.status(500).json({ success: false, error: "Failed to save UPI order" });
   }
 });
