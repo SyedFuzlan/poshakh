@@ -130,6 +130,9 @@ jobs:
         env:
           CI: true
           COOKIE_SECRET: ci-cookie-secret-minimum-32-chars-long
+          NEXT_PUBLIC_API_URL: https://poshakh-production.up.railway.app
+          API_URL: https://poshakh-production.up.railway.app
+          NEXT_PUBLIC_RAZORPAY_KEY_ID: rzp_test_placeholder
 
       - uses: actions/upload-artifact@v4
         if: failure()
