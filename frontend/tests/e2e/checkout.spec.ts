@@ -112,7 +112,7 @@ test.describe('Checkout', () => {
     await page.getByRole('button', { name: /Continue to payment/i }).click()
 
     // Step 3 — use dev simulate if available, else COD
-    await expect(page.getByText(/Payment/)).toBeVisible()
+    await expect(page.getByText(/Payment/).first()).toBeVisible()
 
     const devBtn = page.getByRole('button', { name: /Simulate Payment/i })
     if (await devBtn.isVisible()) {
@@ -148,6 +148,6 @@ test.describe('Checkout', () => {
 
     await expect(page.getByText(/Shipping method/i)).toBeVisible()
     await page.getByRole('button', { name: /← Return to information/i }).click()
-    await expect(page.getByText(/Contact/)).toBeVisible()
+    await expect(page.getByText(/Contact/).first()).toBeVisible()
   })
 })

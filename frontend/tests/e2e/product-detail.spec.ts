@@ -10,7 +10,7 @@ test.describe('Product Detail', () => {
   test('product detail page renders title and price', async ({ page }) => {
     await page.goto(`/products/${MOCK_PRODUCT.slug}`)
     await expect(page.getByRole('heading', { level: 1 })).toContainText(MOCK_PRODUCT.name)
-    await expect(page.getByText(MOCK_PRODUCT.formattedPrice)).toBeVisible()
+    await expect(page.getByText(MOCK_PRODUCT.formattedPrice).first()).toBeVisible()
   })
 
   test('page has dynamic metadata from product', async ({ page }) => {
@@ -49,7 +49,7 @@ test.describe('Product Detail', () => {
 
   test('Add to Cart and Buy Now buttons visible when in stock', async ({ page }) => {
     await page.goto(`/products/${MOCK_PRODUCT.slug}`)
-    await expect(page.getByRole('button', { name: /Add to Cart/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Add to Cart/i }).first()).toBeVisible()
     await expect(page.getByRole('button', { name: /Buy Now/i })).toBeVisible()
   })
 

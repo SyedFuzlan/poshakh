@@ -15,7 +15,7 @@ test.describe('Cart', () => {
 
   test('add product to cart shows badge', async ({ page }) => {
     await page.goto(`/products/${MOCK_PRODUCT.slug}`)
-    await page.getByRole('button', { name: /Add to Cart/i }).click()
+    await page.getByRole('button', { name: /Add to Cart/i }).first().click()
     const badge = page.locator('button[aria-label="Cart"] span')
     await expect(badge).toBeVisible()
     await expect(badge).toHaveText('1')
@@ -23,10 +23,10 @@ test.describe('Cart', () => {
 
   test('cart drawer opens with item after add to cart', async ({ page }) => {
     await page.goto(`/products/${MOCK_PRODUCT.slug}`)
-    await page.getByRole('button', { name: /Add to Cart/i }).click()
+    await page.getByRole('button', { name: /Add to Cart/i }).first().click()
     // Drawer opens automatically after add to cart
     await expect(page.getByText(/My Bag/i)).toBeVisible()
-    await expect(page.getByText(MOCK_PRODUCT.name)).toBeVisible()
+    await expect(page.getByText(MOCK_PRODUCT.name).first()).toBeVisible()
   })
 
   test('cart drawer opens via navbar cart button', async ({ page }) => {
