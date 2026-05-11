@@ -73,6 +73,7 @@ function showApp(email) {
   if (emailDisplay) emailDisplay.textContent = email;
   loadStats();
   loadDashboard();
+  loadCategories();
 }
 
 let categories = [];
@@ -95,7 +96,32 @@ window.loadCategories = async function loadCategories() {
         categories.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
       emSelect.value = val;
     }
+    // Update management list
+    renderCategoryMgmtList();
   } catch (e) { console.error('Failed to load categories', e); }
+}
+
+function renderCategoryMgmtList() {
+  const list = document.getElementById('category-mgmt-list');
+  if (!list) return;
+  if (!categories.length) { list.innerHTML = '<div class="empty-state">No categories found.</div>'; return; }
+  list.innerHTML = categories.map(c => `
+    <div style="background:#f8fafc;padding:12px;border-radius:6px;border:1px solid #e2e8f0;display:flex;flex-direction:column;gap:8px">
+      <div style="font-weight:700;font-size:14px;color:var(--charcoal)">${esc(c.name)}</div>
+      <button class="btn-delete" onclick="deleteCategory(${c.id}, '${esc(c.name)}')">Delete</button>
+    </div>
+  `).join('');
+}
+
+window.deleteCategory = async function deleteCategory(id, name) {
+  if (!confirm(`Are you sure you want to delete category "${name}"?`)) return;
+  try {
+    await apiFetch('/api/products/categories/' + id, 'DELETE');
+    alert('Category deleted!');
+    await loadCategories();
+  } catch (e) {
+    alert('Error: ' + e.message);
+  }
 }
 
 window.addNewCategoryPrompt = async function addNewCategoryPrompt() {
@@ -593,6 +619,7 @@ async function loadSettings() {
       const el = document.getElementById(id);
       if (el) el.value = val;
     }
+    await loadCategories();
   } catch {}
 }
 

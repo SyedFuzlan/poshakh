@@ -50,6 +50,31 @@ router.post("/categories", requireOwner, async (req, res) => {
   }
 });
 
+router.delete("/categories/:id", requireOwner, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Check if any products are using this category
+    const products = await db.prepare("SELECT id FROM products WHERE category_id = $1 AND deleted_at IS NULL").get(id);
+    if (products) {
+      return res.status(400).json({ error: "Cannot delete category that has active products. Please move or delete products first." });
+    }
+
+    await db.prepare("UPDATE categories SET deleted_at = NOW() WHERE id = $1").run(id);
+    
+    await db.logAudit({
+      action: 'CATEGORY_DELETE',
+      details: `Deleted category ID: ${id}`,
+      adminId: req.owner?.email
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    logger.error(err, "Failed to delete category");
+    res.status(500).json({ error: "Failed to delete category" });
+  }
+});
+
 // ── Image upload config ─────────────────────────
 const UPLOADS_DIR = path.join(__dirname, "..", "data", "uploads");
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });

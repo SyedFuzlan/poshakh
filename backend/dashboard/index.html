@@ -432,6 +432,13 @@
       </div>
       <button class="btn-save" onclick="saveSettings()">SAVE ALL SETTINGS</button>
     </div>
+    <div class="product-form" style="margin-top:32px">
+      <h2>Category Management</h2>
+      <div id="category-mgmt-list" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));gap:12px;margin-bottom:20px">
+        <div class="loading">Loading categories...</div>
+      </div>
+      <button class="btn-primary" onclick="addNewCategoryPrompt()" style="background:#4b5563">+ Add New Category</button>
+    </div>
   </div>
 </div>
 
