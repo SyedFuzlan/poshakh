@@ -5,6 +5,11 @@ import { useStore } from "@/store";
 export default function SessionProvider({ children }: { children: React.ReactNode }) {
   const setCustomer = useStore((s) => s.setCustomer);
   const setSessionReady = useStore((s) => s.setSessionReady);
+  const hydrateFromStorage = useStore((s) => s._hydrateFromStorage);
+
+  useEffect(() => {
+    hydrateFromStorage();
+  }, [hydrateFromStorage]);
 
   useEffect(() => {
     fetch("/api/auth/me")

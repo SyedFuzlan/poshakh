@@ -10,6 +10,9 @@ interface Customer {
 }
 
 interface GlobalState {
+  // Hydration
+  _hydrateFromStorage: () => void;
+
   // Cart
   cart: CartItem[];
   cartId: string | null;
@@ -67,14 +70,22 @@ const loadCart = (): CartItem[] => {
 };
 
 export const useStore = create<GlobalState>((set) => ({
-  cart: loadCart(),
-  cartId: typeof window !== "undefined" ? localStorage.getItem("zohra_cart_id") : null,
+  // Start empty (matches SSR) — hydrated from localStorage in SessionProvider useEffect
+  cart: [],
+  cartId: null,
   customer: null,
-  orders: typeof window !== "undefined"
-    ? (() => { try { return JSON.parse(localStorage.getItem("zohra_orders") ?? "[]"); } catch { return []; } })()
-    : [],
+  orders: [],
   savedAddress: null,
   pendingOrder: null,
+
+  _hydrateFromStorage: () => {
+    if (typeof window === "undefined") return;
+    set({
+      cart: loadCart(),
+      cartId: localStorage.getItem("zohra_cart_id"),
+      orders: (() => { try { return JSON.parse(localStorage.getItem("zohra_orders") ?? "[]"); } catch { return []; } })(),
+    });
+  },
 
   addToCart: (item) => set((state) => {
     const existing = state.cart.find((c) => c.id === item.id);
