@@ -24,7 +24,8 @@ jest.mock('../utils/sms', () => ({
 
 jest.mock('../utils/email', () => ({
   sendVerificationEmail: jest.fn(),
-  sendPasswordResetEmail: jest.fn()
+  sendPasswordResetEmail: jest.fn(),
+  sendOrderConfirmationEmail: jest.fn().mockResolvedValue(undefined),
 }));
 
 // Global setup for tests

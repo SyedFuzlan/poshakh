@@ -14,7 +14,7 @@ export default function AnnouncementBar() {
           setText(`✦ ${data.announcement_text.toUpperCase()}`);
         }
       })
-      .catch(() => {});
+      .catch((err) => console.error('[AnnouncementBar] settings fetch failed:', err));
   }, []);
 
   const repeated = Array(12).fill(text);

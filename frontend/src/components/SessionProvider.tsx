@@ -20,7 +20,7 @@ export default function SessionProvider({ children }: { children: React.ReactNod
           });
         }
       })
-      .catch(() => {})
+      .catch((err) => console.error('[SessionProvider] session fetch failed:', err))
       .finally(() => setSessionReady());
   }, [setCustomer, setSessionReady]);
 

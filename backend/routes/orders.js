@@ -173,25 +173,31 @@ router.get("/stats", requireOwner, async (req, res) => {
   }
 });
 
+// Prefix cells starting with formula characters to prevent CSV injection in Excel/Sheets
+function csvCell(val) {
+  const s = String(val == null ? '' : val).replace(/"/g, '""');
+  return /^[=+\-@\t\r]/.test(s) ? `"'${s}"` : `"${s}"`;
+}
+
 // ── GET /api/orders/export/csv ──────────────────
 router.get("/export/csv", requireOwner, async (req, res) => {
   try {
     const rows = await db.prepare("SELECT * FROM orders ORDER BY created_at DESC").all();
-    
+
     let csv = "Order ID,Date (IST),Customer,Phone,Status,Method,Total (INR),Items\n";
-    
+
     rows.forEach(row => {
       const date = (toIST(row.created_at) || "").replace(/,/g, "");
       const items = JSON.parse(row.items_json).map(i => `${i.name}(${i.size})x${i.quantity}`).join("; ");
       const line = [
-        row.id,
-        date,
-        row.customer_name,
-        row.customer_phone,
-        row.status,
-        row.payment_method,
-        Math.round(row.total_paise / 100),
-        `"${items}"`
+        csvCell(row.id),
+        csvCell(date),
+        csvCell(row.customer_name),
+        csvCell(row.customer_phone),
+        csvCell(row.status),
+        csvCell(row.payment_method),
+        csvCell(Math.round(row.total_paise / 100)),
+        csvCell(items),
       ].join(",");
       csv += line + "\n";
     });

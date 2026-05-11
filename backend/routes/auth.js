@@ -23,7 +23,6 @@ const authLimiter = rateLimit({
 router.post("/login", authLimiter, async (req, res) => {
   try {
     const { email, password } = req.body || {};
-    console.log('Login request for email:', email);
 
     if (!email || !password) {
       return res.status(400).json({ error: "Email and password required" });
@@ -39,26 +38,22 @@ router.post("/login", authLimiter, async (req, res) => {
       return res.status(500).json({ error: "Server configuration error" });
     }
 
-    console.log('Env vars present. Email check...');
     const emailOk = email.toLowerCase().trim() === ownerEmail.toLowerCase().trim();
-    
-    console.log('Bcrypt comparing...');
+
     let passOk = false;
     try {
       passOk = await bcrypt.compare(password, ownerHash);
     } catch (bcryptErr) {
-      console.error('Bcrypt error:', bcryptErr);
+      logger.error(bcryptErr, 'Bcrypt comparison failed');
       throw new Error('Bcrypt comparison failed: ' + bcryptErr.message);
     }
 
     if (!emailOk || !passOk) {
-      console.log('Login failed: Invalid credentials');
+      logger.warn({ email }, 'Owner login failed — invalid credentials');
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    console.log('Login success. Signing JWT...');
     if (!process.env.JWT_SECRET) {
-      console.error('CRITICAL: JWT_SECRET missing');
       throw new Error('JWT_SECRET not configured');
     }
 
@@ -68,12 +63,11 @@ router.post("/login", authLimiter, async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    console.log('Login completed successfully');
+    logger.info({ email: ownerEmail }, 'Owner login successful');
     res.json({ token, email: ownerEmail });
   } catch (err) {
-    console.error('Login route catch block:', err);
     logger.error(err, "POST /api/auth/login error");
-    res.status(500).json({ error: "Login failed: " + err.message });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 

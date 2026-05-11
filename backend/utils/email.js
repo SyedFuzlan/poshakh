@@ -83,4 +83,52 @@ async function sendPasswordResetEmail(to, rawToken) {
   }
 }
 
-module.exports = { sendVerificationEmail, sendPasswordResetEmail };
+/**
+ * Send order confirmation email after successful payment.
+ * Fire-and-forget safe — never throws, logs errors instead.
+ * @param {string|null} to - Customer email (skipped if null/empty)
+ * @param {{ orderId: string, items: Array, total: number, customerName: string }} opts
+ */
+function escHtml(val) {
+  return String(val == null ? '' : val)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+async function sendOrderConfirmationEmail(to, { orderId, items, total, customerName }) {
+  if (!to) return;
+
+  const appUrl = process.env.APP_URL || 'http://localhost:3000';
+
+  if (process.env.NODE_ENV !== 'production') {
+    logger.info({ to, orderId, total }, '[DEV] Order confirmation email');
+    return;
+  }
+
+  const itemRows = (Array.isArray(items) ? items : [])
+    .map(item => `<tr><td style="padding:4px 8px">${escHtml(item.name)} (${escHtml(item.size)})</td><td style="padding:4px 8px;text-align:center">×${escHtml(item.quantity || 1)}</td></tr>`)
+    .join('');
+
+  const { error } = await getResend().emails.send({
+    from: FROM,
+    to,
+    subject: `Order Confirmed — ${escHtml(orderId)}`,
+    html: `<div style="font-family:sans-serif;max-width:520px;margin:auto;padding:24px">
+      <h2 style="color:#3D0D16">Your order is confirmed!</h2>
+      <p>Hi ${escHtml(customerName)}, your order <strong>${escHtml(orderId)}</strong> has been placed successfully.</p>
+      <table style="width:100%;border-collapse:collapse;margin:16px 0;border:1px solid #eee">
+        <thead><tr style="background:#f9f9f9"><th style="padding:8px;text-align:left">Item</th><th style="padding:8px">Qty</th></tr></thead>
+        <tbody>${itemRows}</tbody>
+      </table>
+      <p><strong>Total: ₹${Number(total).toLocaleString('en-IN')}</strong></p>
+      <p style="color:#666;font-size:13px;margin-top:16px">Estimated delivery: 5–7 business days.<br>Track your order at <a href="${appUrl}/account">${appUrl}/account</a>.</p>
+      <p style="color:#999;font-size:12px;margin-top:24px">Questions? Reply to this email or contact us at support@madebyzohra.in</p>
+    </div>`,
+  });
+
+  if (error) {
+    logger.error({ error, to, orderId }, 'Order confirmation email delivery failed');
+  }
+}
+
+module.exports = { sendVerificationEmail, sendPasswordResetEmail, sendOrderConfirmationEmail };

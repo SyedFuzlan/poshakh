@@ -3,14 +3,23 @@
  * Generates a professional HTML invoice for orders.
  */
 
+function esc(val) {
+  return String(val == null ? '' : val)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function generateInvoiceHTML(order) {
   const itemsHtml = order.items.map(it => `
     <tr>
       <td style="padding: 12px; border-bottom: 1px solid #eee;">
-        <strong>${it.name}</strong><br/>
-        <span style="font-size: 12px; color: #666;">Size: ${it.size || 'N/A'}</span>
+        <strong>${esc(it.name)}</strong><br/>
+        <span style="font-size: 12px; color: #666;">Size: ${esc(it.size || 'N/A')}</span>
       </td>
-      <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">${it.quantity}</td>
+      <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">${esc(it.quantity)}</td>
       <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">₹${(it.price_paise / 100).toLocaleString('en-IN')}</td>
       <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">₹${((it.price_paise * it.quantity) / 100).toLocaleString('en-IN')}</td>
     </tr>
@@ -58,19 +67,19 @@ function generateInvoiceHTML(order) {
         </div>
         <div style="text-align: right;">
           <h4>Order Details</h4>
-          <p>Order ID: <strong>${order.id}</strong><br/>
+          <p>Order ID: <strong>${esc(order.id)}</strong><br/>
           Date: ${new Date(order.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}<br/>
-          Payment: ${order.payment_method.toUpperCase()}<br/>
-          Status: ${order.status.toUpperCase()}</p>
+          Payment: ${esc(order.payment_method.toUpperCase())}<br/>
+          Status: ${esc(order.status.toUpperCase())}</p>
         </div>
       </div>
 
       <div class="info-grid">
         <div>
           <h4>Bill To</h4>
-          <p><strong>${order.customer_name}</strong><br/>
-          ${order.address.full}<br/>
-          Phone: ${order.customer_phone}</p>
+          <p><strong>${esc(order.customer_name)}</strong><br/>
+          ${esc(order.address.full)}<br/>
+          Phone: ${esc(order.customer_phone)}</p>
         </div>
       </div>
 

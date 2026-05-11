@@ -10,6 +10,7 @@ const crypto = require("crypto");
 const Razorpay = require("razorpay");
 const db = require("../db").db;
 const { notifyOrderConfirmed } = require("../utils/sms");
+const { sendOrderConfirmationEmail } = require("../utils/email");
 
 const router = express.Router();
 
@@ -222,8 +223,14 @@ async function saveOrder({ orderId, checkoutId, paymentMethod, razorpayPaymentId
 
     logger.info({ orderId, total: calculatedTotalPaise / 100, method: paymentMethod }, "Order saved successfully");
     
-    // Async notification
+    // Async notifications — fire and forget, never block the transaction
     notifyOrderConfirmed(customer_phone, customer_name, orderId, calculatedTotalPaise / 100);
+    sendOrderConfirmationEmail(customer_email || null, {
+      orderId,
+      items,
+      total: calculatedTotalPaise / 100,
+      customerName: customer_name,
+    }).catch(err => logger.error(err, 'Order confirmation email error'));
 
     return orderId;
   });
@@ -299,10 +306,11 @@ async function handleVerify(req, res) {
       .digest("hex");
 
     if (expectedSig !== razorpay_signature) {
+      logger.warn({ razorpay_order_id, razorpay_payment_id }, 'Payment signature mismatch — possible tampering attempt');
       return res.status(400).json({ success: false, error: "Payment verification failed" });
     }
 
-    const existing = db
+    const existing = await db
       .prepare("SELECT id FROM orders WHERE razorpay_payment_id = ?")
       .get(razorpay_payment_id);
 
@@ -321,7 +329,7 @@ async function handleVerify(req, res) {
       orderData: order_data,
     });
 
-    console.log(`✅ Order saved: ${orderId} | Payment: ${razorpay_payment_id}`);
+    logger.info({ orderId, paymentId: razorpay_payment_id }, 'Order saved via Razorpay');
     res.json({ success: true, order_id: orderId });
   } catch (err) {
     // UNIQUE constraint error = concurrent duplicate payment attempt
@@ -347,7 +355,7 @@ router.post("/upi-confirm", async (req, res) => {
       return res.status(400).json({ error: validationError });
     }
 
-    const existing = db.prepare("SELECT id FROM orders WHERE utr = ?").get(utr.trim());
+    const existing = await db.prepare("SELECT id FROM orders WHERE utr = ?").get(utr.trim());
     if (existing) {
       return res.json({ success: true, order_id: existing.id, duplicate: true });
     }
@@ -363,14 +371,14 @@ router.post("/upi-confirm", async (req, res) => {
       orderData: order_data,
     });
 
-    console.log(`📱 UPI order saved: ${orderId} | UTR: ${utr.trim()}`);
+    logger.info({ orderId, utr: utr.trim() }, 'UPI order saved');
     res.json({ success: true, order_id: orderId });
   } catch (err) {
     // UNIQUE constraint error = concurrent duplicate UTR attempt
     if (err && String(err.message).includes("UNIQUE constraint failed: orders.utr")) {
       return res.status(409).json({ success: false, error: "Duplicate UTR — order already exists" });
     }
-    console.error("POST /api/payments/upi-confirm error:", err);
+    logger.error(err, 'POST /api/payments/upi-confirm error');
     res.status(500).json({ success: false, error: "Failed to save UPI order" });
   }
 });

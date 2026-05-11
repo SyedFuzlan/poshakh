@@ -32,10 +32,9 @@ export default function HeroBanner() {
             priority
             sizes="100vw"
             quality={90}
-            unoptimized={!!heroImg}
           />
         </div>
-        
+
         {/* Mobile Image */}
         <div className="block md:hidden relative w-full aspect-[4/5]">
           <Image
@@ -46,7 +45,6 @@ export default function HeroBanner() {
             priority
             sizes="100vw"
             quality={85}
-            unoptimized={!!heroImg}
           />
         </div>
       </Link>

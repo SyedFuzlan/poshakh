@@ -132,7 +132,3 @@ export async function getCategories(): Promise<Category[]> {
     return [];
   }
 }
-
-// Legacy no-op exports — kept so any import of these names doesn't break
-export const products: Product[] = [];
-export const getProductsByCategory = (): Product[] => [];

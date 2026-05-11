@@ -17,7 +17,7 @@ export default function CartDrawer() {
   const handleRemove = (itemId: string, lineItemId?: string) => {
     removeFromCart(itemId);
     if (cartId && lineItemId) {
-      removeLineItem(cartId, lineItemId).catch(() => {});
+      removeLineItem(cartId, lineItemId).catch((err) => console.error('[CartDrawer] removeLineItem failed:', err));
     }
   };
 
@@ -25,9 +25,9 @@ export default function CartDrawer() {
     updateQuantity(itemId, newQty);
     if (cartId && lineItemId) {
       if (newQty <= 0) {
-        removeLineItem(cartId, lineItemId).catch(() => {});
+        removeLineItem(cartId, lineItemId).catch((err) => console.error('[CartDrawer] removeLineItem failed:', err));
       } else {
-        updateLineItem(cartId, lineItemId, newQty).catch(() => {});
+        updateLineItem(cartId, lineItemId, newQty).catch((err) => console.error('[CartDrawer] updateLineItem failed:', err));
       }
     }
   };

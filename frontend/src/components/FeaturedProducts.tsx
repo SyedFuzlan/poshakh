@@ -1,17 +1,9 @@
-"use client";
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { Product } from "@/types";
 import { getProducts } from "@/lib/products";
+import FeaturedProductCard from "./FeaturedProductCard";
 
-export default function FeaturedProducts() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [hovered, setHovered] = useState<string | null>(null);
-
-  useEffect(() => {
-    getProducts().then((all) => setProducts(all.slice(0, 6)));
-  }, []);
+export default async function FeaturedProducts() {
+  const products = (await getProducts()).slice(0, 6);
 
   if (products.length === 0) return null;
 
@@ -33,7 +25,6 @@ export default function FeaturedProducts() {
           }
         }
       `}</style>
-      {/* Heading */}
       <div style={{ textAlign: "center", marginBottom: "48px" }}>
         <p style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "4px", color: "#C8A367", textTransform: "uppercase", marginBottom: "12px" }}>
           Handpicked for You
@@ -50,79 +41,12 @@ export default function FeaturedProducts() {
         </h2>
       </div>
 
-      {/* Product Grid */}
       <div className="fp-grid">
         {products.map((product) => (
-          <Link
-            key={product.id}
-            href={`/products/${product.id}`}
-            style={{ textDecoration: "none", color: "inherit" }}
-            onMouseEnter={() => setHovered(product.id)}
-            onMouseLeave={() => setHovered(null)}
-          >
-            <div style={{
-              background: "#fff",
-              overflow: "hidden",
-              transition: "box-shadow 0.3s ease, transform 0.3s ease",
-              boxShadow: hovered === product.id ? "0 12px 40px rgba(0,0,0,0.12)" : "0 2px 8px rgba(0,0,0,0.05)",
-              transform: hovered === product.id ? "translateY(-4px)" : "translateY(0)",
-            }}>
-              {/* Image */}
-              <div style={{ position: "relative", aspectRatio: "3/4", overflow: "hidden", background: "#f0ede8" }}>
-                <Image
-                  src={product.images[0] || "/images/products/saree1.png"}
-                  alt={product.name}
-                  fill
-                  style={{
-                    objectFit: "cover",
-                    transition: "transform 0.5s ease",
-                    transform: hovered === product.id ? "scale(1.05)" : "scale(1)",
-                  }}
-                  sizes="(max-width: 768px) 50vw, 33vw"
-                />
-                <div style={{
-                  position: "absolute", top: "12px", left: "12px",
-                  background: "#3D0D16", color: "#E0C275",
-                  fontSize: "10px", fontWeight: 700, letterSpacing: "2px",
-                  textTransform: "uppercase", padding: "4px 10px",
-                }}>
-                  New
-                </div>
-              </div>
-
-              {/* Info */}
-              <div style={{ padding: "16px 20px 20px" }}>
-                <p style={{ fontSize: "11px", color: "#999", letterSpacing: "2px", textTransform: "uppercase", marginBottom: "6px" }}>
-                  {product.category}
-                </p>
-                <h3 style={{
-                  fontSize: "15px", fontWeight: 500, color: "#2A2520",
-                  marginBottom: "10px", lineHeight: 1.3,
-                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                }}>
-                  {product.name}
-                </h3>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: "16px", fontWeight: 700, color: "#3D0D16" }}>
-                    {product.formattedPrice || `₹${product.price?.toLocaleString("en-IN")}`}
-                  </span>
-                  <span style={{
-                    fontSize: "10px", fontWeight: 600, letterSpacing: "1.5px",
-                    textTransform: "uppercase", color: "#C8A367",
-                    borderBottom: "1px solid #C8A367", paddingBottom: "1px",
-                    opacity: hovered === product.id ? 1 : 0,
-                    transition: "opacity 0.3s ease",
-                  }}>
-                    Shop →
-                  </span>
-                </div>
-              </div>
-            </div>
-          </Link>
+          <FeaturedProductCard key={product.id} product={product} />
         ))}
       </div>
 
-      {/* View More button */}
       <div style={{ textAlign: "center" }}>
         <Link
           href="/products"
