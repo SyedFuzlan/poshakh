@@ -206,11 +206,16 @@ let server;
   try {
     console.log('[db] Running migrations...');
     const { execSync } = require('child_process');
-    execSync('npx db-migrate up', { stdio: 'inherit' });
+    // Run in the backend directory specifically to find database.json and migrations/
+    execSync('npx db-migrate up --config ./database.json', { 
+      stdio: 'inherit',
+      cwd: __dirname,
+      timeout: 30000 // 30 second timeout to prevent indefinite hang
+    });
     console.log('[db] Migrations completed.');
   } catch (err) {
-    console.error('[db] Migration failed:', err.message);
-    // Continue anyway, or exit if critical
+    console.error('[db] Migration failed or timed out:', err.message);
+    // Continue anyway - better to be up than down
   }
 
   await initDb();
