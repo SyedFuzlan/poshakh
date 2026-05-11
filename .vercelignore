@@ -1,9 +1,7 @@
-node_modules/
-backend/
-.git/
-scratch/
-.claude/
+**/node_modules
+**/.next
+backend
+scratch
+.claude
+.git
 *.md
-!frontend/README.md
-backend/node_modules/
-frontend/node_modules/
