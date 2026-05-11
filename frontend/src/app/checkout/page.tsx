@@ -365,18 +365,18 @@ export default function CheckoutPage() {
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "14px" }}>
                 <div>
-                  <label style={labelStyle}>First name</label>
-                  <input type="text" value={addr.firstName} onChange={e => handleAddrChange("firstName", e.target.value)} required style={inputStyle} />
+                  <label htmlFor="firstName" style={labelStyle}>First name</label>
+                  <input id="firstName" type="text" value={addr.firstName} onChange={e => handleAddrChange("firstName", e.target.value)} required style={inputStyle} />
                 </div>
                 <div>
-                  <label style={labelStyle}>Last name</label>
-                  <input type="text" value={addr.lastName} onChange={e => handleAddrChange("lastName", e.target.value)} required style={inputStyle} />
+                  <label htmlFor="lastName" style={labelStyle}>Last name</label>
+                  <input id="lastName" type="text" value={addr.lastName} onChange={e => handleAddrChange("lastName", e.target.value)} required style={inputStyle} />
                 </div>
               </div>
 
               <div style={{ marginBottom: "14px" }}>
-                <label style={labelStyle}>Address</label>
-                <input type="text" value={addr.address} onChange={e => handleAddrChange("address", e.target.value)} required style={inputStyle} />
+                <label htmlFor="address" style={labelStyle}>Address</label>
+                <input id="address" type="text" value={addr.address} onChange={e => handleAddrChange("address", e.target.value)} required style={inputStyle} />
               </div>
 
               <div style={{ marginBottom: "14px" }}>
@@ -386,19 +386,19 @@ export default function CheckoutPage() {
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px", marginBottom: "14px" }}>
                 <div>
-                  <label style={labelStyle}>City</label>
-                  <input type="text" value={addr.city} onChange={e => handleAddrChange("city", e.target.value)} required style={inputStyle} />
+                  <label htmlFor="city" style={labelStyle}>City</label>
+                  <input id="city" type="text" value={addr.city} onChange={e => handleAddrChange("city", e.target.value)} required style={inputStyle} />
                 </div>
                 <div>
-                  <label style={labelStyle}>State</label>
-                  <select value={addr.state} onChange={e => handleAddrChange("state", e.target.value)} required style={{ ...inputStyle, cursor: "pointer" }}>
+                  <label htmlFor="state" style={labelStyle}>State</label>
+                  <select id="state" name="state" value={addr.state} onChange={e => handleAddrChange("state", e.target.value)} required style={{ ...inputStyle, cursor: "pointer" }}>
                     <option value="">Select</option>
                     {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={labelStyle}>PIN Code</label>
-                  <input type="text" value={addr.pinCode} onChange={e => handleAddrChange("pinCode", e.target.value)} required maxLength={6} style={inputStyle} />
+                  <label htmlFor="pinCode" style={labelStyle}>PIN Code</label>
+                  <input id="pinCode" type="text" value={addr.pinCode} onChange={e => handleAddrChange("pinCode", e.target.value)} required maxLength={6} style={inputStyle} />
                 </div>
               </div>
 

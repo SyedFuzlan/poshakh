@@ -46,7 +46,25 @@ function mapProduct(p: RawProduct): Product {
   };
 }
 
+const DEV_MOCK_PRODUCT: Product = {
+  id: 'test-saree-1',
+  name: 'Test Silk Saree',
+  slug: 'test-silk-saree',
+  price: 5000,
+  formattedPrice: '₹5,000',
+  images: ['/images/products/saree1.png'],
+  category_id: 1,
+  category_name: 'sarees',
+  category: 'sarees',
+  description: 'A beautiful test saree',
+  variants: [{ id: 'v1', size: 'Free Size', stock: 10 }],
+  totalStock: 10,
+};
+
 export async function getProducts(cat?: string): Promise<Product[]> {
+  if (process.env.NEXT_PUBLIC_DEV_SIMULATE === 'true') {
+    return [DEV_MOCK_PRODUCT];
+  }
   try {
     const url = cat && !["new", "bridal", "festive", "bestsellers"].includes(cat)
       ? `${BACKEND}/api/products?category=${encodeURIComponent(cat)}`
@@ -65,6 +83,9 @@ export async function getProducts(cat?: string): Promise<Product[]> {
 }
 
 export async function getProductById(id: string): Promise<Product | null> {
+  if (process.env.NEXT_PUBLIC_DEV_SIMULATE === 'true') {
+    return { ...DEV_MOCK_PRODUCT, id, slug: id };
+  }
   try {
     const res = await fetch(`${BACKEND}/api/products/${id}`, { next: { revalidate: 60 } });
     if (!res.ok) return null;
