@@ -62,9 +62,6 @@ const DEV_MOCK_PRODUCT: Product = {
 };
 
 export async function getProducts(cat?: string): Promise<Product[]> {
-  if (process.env.NEXT_PUBLIC_DEV_SIMULATE === 'true') {
-    return [DEV_MOCK_PRODUCT];
-  }
   try {
     const url = cat && !["new", "bridal", "festive", "bestsellers"].includes(cat)
       ? `${BACKEND}/api/products?category=${encodeURIComponent(cat)}`
@@ -83,15 +80,16 @@ export async function getProducts(cat?: string): Promise<Product[]> {
 }
 
 export async function getProductById(id: string): Promise<Product | null> {
-  if (process.env.NEXT_PUBLIC_DEV_SIMULATE === 'true') {
-    return { ...DEV_MOCK_PRODUCT, id, slug: id };
-  }
   try {
     const res = await fetch(`${BACKEND}/api/products/${id}`, { next: { revalidate: 60 } });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      if (process.env.NODE_ENV !== 'production') return { ...DEV_MOCK_PRODUCT, id, slug: id };
+      return null;
+    }
     const { product } = await res.json();
     return mapProduct(product);
   } catch {
+    if (process.env.NODE_ENV !== 'production') return { ...DEV_MOCK_PRODUCT, id, slug: id };
     return null;
   }
 }
