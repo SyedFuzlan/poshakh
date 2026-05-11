@@ -315,7 +315,7 @@ async function handleVerify(req, res) {
     }
 
     const existing = await db
-      .prepare("SELECT id FROM orders WHERE razorpay_payment_id = ?")
+      .prepare("SELECT id FROM orders WHERE razorpay_payment_id = $1")
       .get(razorpay_payment_id);
 
     if (existing) {
@@ -336,12 +336,17 @@ async function handleVerify(req, res) {
     logger.info({ orderId, paymentId: razorpay_payment_id }, 'Order saved via Razorpay');
     res.json({ success: true, order_id: orderId });
   } catch (err) {
-    // UNIQUE constraint error = concurrent duplicate payment attempt
-    if (err && String(err.message).includes("UNIQUE constraint failed: orders.razorpay_payment_id")) {
-      return res.status(409).json({ success: false, error: "Duplicate payment — order already exists" });
-    }
-    logger.error({ err }, "Payment verification error");
-    res.status(500).json({ success: false, error: "Failed to verify payment" });
+    logger.error({ 
+      err: err.message, 
+      stack: err.stack,
+      paymentId: razorpay_payment_id,
+      orderId: razorpay_order_id
+    }, "Payment verification error");
+    res.status(500).json({ 
+      success: false, 
+      error: "Failed to verify payment",
+      details: err.message 
+    });
   }
 }
 
@@ -359,7 +364,7 @@ router.post("/upi-confirm", async (req, res) => {
       return res.status(400).json({ error: validationError });
     }
 
-    const existing = await db.prepare("SELECT id FROM orders WHERE utr = ?").get(utr.trim());
+    const existing = await db.prepare("SELECT id FROM orders WHERE utr = $1").get(utr.trim());
     if (existing) {
       return res.json({ success: true, order_id: existing.id, duplicate: true });
     }
