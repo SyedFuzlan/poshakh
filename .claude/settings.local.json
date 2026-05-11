@@ -15,7 +15,10 @@
       "Bash(curl -s -X POST http://localhost:3000/api/otp/send -H 'Content-Type: application/json' -d '{\"mobile\":\"+919876543210\",\"firstName\":\"Test\",\"lastName\":\"User\"}')",
       "Bash(docker exec *)",
       "Bash(curl -sv 'http://localhost:9000/store/products?limit=1' -H 'x-publishable-api-key: pk_bdccf833fdea56037a4d36201e40e6e5ded8ebbc7fff8a97ffb0876bfae84290')",
-      "Bash(curl *)"
+      "Bash(curl *)",
+      "Bash(cp .planning/STATE.md /tmp/state_w2.md)",
+      "Bash(cp .planning/ROADMAP.md /tmp/roadmap_w2.md)",
+      "Bash(git merge *)"
     ]
   },
   "outputStyle": "default"
