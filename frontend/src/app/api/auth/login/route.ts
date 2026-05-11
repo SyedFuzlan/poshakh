@@ -3,9 +3,9 @@ import { createSignedCookie } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
-const _backendUrl = process.env.API_URL ?? "http://localhost:9000";
+const _backendUrl = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:9000";
 if (process.env.NODE_ENV === "production" && _backendUrl.startsWith("http://")) {
-  throw new Error("API_URL must use HTTPS in production");
+  throw new Error("API_URL must use HTTPS in production — set API_URL or NEXT_PUBLIC_API_URL env var");
 }
 const BACKEND = _backendUrl;
 
