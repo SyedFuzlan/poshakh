@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Product } from "@/types";
 import ProductCard from "@/components/ProductCard";
 
@@ -43,7 +43,7 @@ export default function ProductClient({
   const toggleColor = (c: string) =>
     setSelectedColors((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
 
-  const filteredProducts = initialProducts.filter((p) => {
+  const filteredProducts = useMemo(() => initialProducts.filter((p) => {
     const matchesPrice = p.price <= maxPrice;
     const text = (p.name + " " + p.description).toLowerCase();
     const matchesFabric =
@@ -51,7 +51,7 @@ export default function ProductClient({
     const matchesColor =
       selectedColors.length === 0 || selectedColors.some((c) => text.includes(c.toLowerCase()));
     return matchesPrice && matchesFabric && matchesColor;
-  });
+  }), [initialProducts, selectedFabrics, selectedColors, maxPrice]);
 
   const filterGroups = (
     <>

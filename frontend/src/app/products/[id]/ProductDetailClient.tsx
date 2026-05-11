@@ -66,12 +66,15 @@ export default function ProductDetailClient({ product }: { product: Product }) {
     }
   }, [product, allOOS]);
 
-  // Load similar products and siblings
+  // Load similar products and siblings in parallel
   useEffect(() => {
     if (product?.id && product?.category) {
-      getSimilarProducts(product.id, product.category, product.price).then(setSimilar);
-      import("@/lib/products").then(lib => {
-        lib.getProductSiblings(product).then(setSiblings);
+      Promise.all([
+        getSimilarProducts(product.id, product.category, product.price),
+        import("@/lib/products").then(lib => lib.getProductSiblings(product)),
+      ]).then(([sim, sibs]) => {
+        setSimilar(sim);
+        setSiblings(sibs);
       });
     }
   }, [product]);

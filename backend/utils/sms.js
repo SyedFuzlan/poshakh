@@ -17,13 +17,21 @@ async function sendSMS(phone, message) {
     numbers: phone,
   });
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
   try {
-    const res = await fetch(`https://www.fast2sms.com/dev/bulkV2?${params}`);
+    const res = await fetch(`https://www.fast2sms.com/dev/bulkV2?${params}`, { signal: controller.signal });
     const data = await res.json();
     logger.info({ phone, response: data }, 'SMS sent');
     return data;
   } catch (err) {
-    logger.error({ err, phone }, 'SMS sending failed');
+    if (err.name === 'AbortError') {
+      logger.warn({ phone }, 'SMS request timed out after 5s');
+    } else {
+      logger.error({ err, phone }, 'SMS sending failed');
+    }
+  } finally {
+    clearTimeout(timer);
   }
 }
 
