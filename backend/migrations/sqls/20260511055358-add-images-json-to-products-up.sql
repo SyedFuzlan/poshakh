@@ -1,0 +1,2 @@
+ALTER TABLE products ADD COLUMN IF NOT EXISTS images_json TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT;

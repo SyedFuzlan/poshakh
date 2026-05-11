@@ -252,6 +252,7 @@ router.post(
   requireOwner,
   upload.array("images", 10),
   async (req, res) => {
+    let productId;
     try {
       const validated = productSchema.safeParse(req.body);
       if (!validated.success) {
@@ -287,7 +288,7 @@ router.post(
         }
       }
 
-      const { lastInsertRowid: productId } = await db.prepare(
+      const productResult = await db.prepare(
           `INSERT INTO products (name, price_paise, compare_at_price_paise, category_id, collection, slug, description, meta_title, meta_description)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`
         ).run(
@@ -301,6 +302,8 @@ router.post(
           (req.body.meta_title || "").trim() || null,
           (req.body.meta_description || "").trim() || null
         );
+      
+      productId = productResult.lastInsertRowid;
 
       for (let i = 0; i < sizes.length; i++) {
         const size = sizes[i];
@@ -312,7 +315,7 @@ router.post(
         // Log initial stock
         if (stock > 0) {
           await db.prepare(`INSERT INTO inventory_logs (variant_id, change, reason, admin_id) VALUES ($1, $2, $3, $4)`).run(
-            variantId, stock, 'initial_stock', req.owner?.id
+            variantId, stock, 'initial_stock', req.owner?.id || req.owner?.email
           );
         }
       }
@@ -363,8 +366,13 @@ router.post(
       logger.info({ productId, name: name.trim() }, "Product created");
       res.status(201).json({ product: formatProduct(newRows[0], newVariants) });
     } catch (err) {
-      logger.error(err, "POST /api/products error");
-      res.status(500).json({ error: "Failed to create product" });
+      logger.error({ 
+        error: err.message, 
+        stack: err.stack,
+        body: req.body,
+        productId: productId || 'failed' 
+      }, "POST /api/products error");
+      res.status(500).json({ error: "Failed to create product", details: err.message });
     }
   }
 );
@@ -433,8 +441,22 @@ router.patch("/:id", requireOwner, async (req, res) => {
     if (price) { updates.push(`price_paise = $${params.length + 1}`); params.push(Math.round(price * 100)); }
     if (compare_at_price !== undefined) { updates.push(`compare_at_price_paise = $${params.length + 1}`); params.push(compare_at_price ? Math.round(compare_at_price * 100) : null); }
     if (description !== undefined) { updates.push(`description = $${params.length + 1}`); params.push(description); }
-    const actualCatId = category || category_id;
-    if (actualCatId) { updates.push(`category_id = $${params.length + 1}`); params.push(actualCatId); }
+    const actualCatIdRaw = category || category_id;
+    if (actualCatIdRaw) {
+      let finalCatId = parseInt(actualCatIdRaw, 10);
+      if (isNaN(finalCatId)) {
+        // Resolve name to ID
+        const existingCat = await db.prepare("SELECT id FROM categories WHERE name = $1 OR slug = $2").get(actualCatIdRaw, String(actualCatIdRaw).toLowerCase());
+        if (existingCat) {
+          finalCatId = existingCat.id;
+        } else {
+          const { lastInsertRowid } = await db.prepare("INSERT INTO categories (name, slug) VALUES ($1, $2) RETURNING id").run(actualCatIdRaw, String(actualCatIdRaw).toLowerCase().replace(/[^a-z0-9]+/g, '-'));
+          finalCatId = lastInsertRowid;
+        }
+      }
+      updates.push(`category_id = $${params.length + 1}`);
+      params.push(finalCatId);
+    }
     if (collection !== undefined) { updates.push(`collection = $${params.length + 1}`); params.push(collection); }
     if (meta_title !== undefined) { updates.push(`meta_title = $${params.length + 1}`); params.push(meta_title); }
     if (meta_description !== undefined) { updates.push(`meta_description = $${params.length + 1}`); params.push(meta_description); }

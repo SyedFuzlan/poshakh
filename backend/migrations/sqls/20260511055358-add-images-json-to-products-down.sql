@@ -1,0 +1,2 @@
+ALTER TABLE products DROP COLUMN IF EXISTS images_json;
+ALTER TABLE products DROP COLUMN IF EXISTS image_url;
