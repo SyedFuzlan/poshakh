@@ -266,7 +266,11 @@ router.post("/create-order", async (req, res) => {
     });
   } catch (err) {
     logger.error(err, 'POST /api/payments/create-order error');
-    res.status(500).json({ error: 'Something went wrong' });
+    res.status(500).json({ 
+      error: 'Failed to create payment order', 
+      details: err.message,
+      hint: err.message.includes("RAZORPAY_KEY") ? "Check if Razorpay API keys are correctly set in environment variables." : undefined
+    });
   }
 });
 

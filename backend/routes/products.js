@@ -168,7 +168,7 @@ router.get("/", async (req, res) => {
     let where = ["p.deleted_at IS NULL"];
     if (category) {
       params.push(category);
-      where.push(`p.category = $${params.length}`);
+      where.push(`(c.slug = $${params.length} OR c.name = $${params.length})`);
     }
     if (collection) {
       params.push(collection);
@@ -192,7 +192,7 @@ router.get("/", async (req, res) => {
     res.json({ products: rows.map(row => formatProduct(row)) });
   } catch (err) {
     console.error("GET /api/products error:", err);
-    res.status(500).json({ error: "Failed to fetch products" });
+    res.status(500).json({ error: "Failed to fetch products", details: err.message });
   }
 });
 
@@ -226,7 +226,7 @@ router.get("/:id", async (req, res) => {
     res.json({ product: formatProduct(rows[0], variants) });
   } catch (err) {
     console.error("GET /api/products/:id error:", err);
-    res.status(500).json({ error: "Failed to fetch product" });
+    res.status(500).json({ error: "Failed to fetch product", details: err.message });
   }
 });
 
