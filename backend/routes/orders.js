@@ -12,6 +12,7 @@ const router = express.Router();
 const { generateOrderId, validateOrderData, saveOrder } = require("./payments");
 const { notifyShipped, notifyDelivered } = require("../utils/sms");
 const { generateInvoiceHTML } = require("../utils/invoice");
+const { createShipment } = require("../utils/delhivery");
 
 // ── POST /api/orders ─────────────────────────────
 // Public endpoint to place a COD order (Guest or Logged-in)
@@ -478,6 +479,45 @@ router.get("/reports", requireOwner, async (req, res) => {
   } catch (err) {
     console.error("GET /api/orders/reports error:", err);
     res.status(500).json({ error: "Failed to generate report" });
+  }
+});
+
+// ── POST /api/orders/:id/create-shipment ────────
+router.post("/:id/create-shipment", requireOwner, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const row = await db.prepare("SELECT * FROM orders WHERE id = $1").get(id);
+    if (!row) return res.status(404).json({ error: "Order not found" });
+
+    if (row.status !== 'processing' && row.status !== 'paid' && row.status !== 'confirmed') {
+      return res.status(400).json({ error: "Order must be in processing, paid, or confirmed status to ship" });
+    }
+
+    let awb, label_url;
+    try {
+      const result = await createShipment(formatOrder(row));
+      awb = result.awb;
+      label_url = result.label_url;
+    } catch (err) {
+      console.error("POST /api/orders/:id/create-shipment delhivery error:", err);
+      return res.status(502).json({ error: err.message, fallback: true });
+    }
+
+    await db.prepare(
+      `UPDATE orders
+       SET status = 'shipped', courier_name = 'Delhivery',
+           tracking_number = $1, delhivery_awb = $2, delhivery_label_url = $3,
+           shipped_at = NOW()
+       WHERE id = $4`
+    ).run(awb, awb, label_url, id);
+
+    notifyShipped(row.customer_phone, row.customer_name, id, 'Delhivery', awb);
+
+    res.json({ success: true, tracking_number: awb, label_url });
+  } catch (err) {
+    console.error("POST /api/orders/:id/create-shipment error:", err);
+    res.status(500).json({ error: "Failed to create shipment" });
   }
 });
 

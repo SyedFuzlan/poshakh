@@ -338,10 +338,39 @@ function orderCard(o) {
 }
 
 window.shipOrder = async function shipOrder(id, btn) {
-  const courier = document.getElementById('courier-' + id).value.trim();
-  const tracking = document.getElementById('tracking-' + id).value.trim();
-  if(!courier || !tracking) return alert('Enter courier and tracking ID');
-  updateOrderStatus(id, 'shipped', { courier_name: courier, tracking_number: tracking });
+  const courierEl = document.getElementById('courier-' + id);
+  const trackingEl = document.getElementById('tracking-' + id);
+  const manualCourier = courierEl ? courierEl.value.trim() : '';
+  const manualTracking = trackingEl ? trackingEl.value.trim() : '';
+
+  // If manual fields filled, use manual flow
+  if (manualCourier && manualTracking) {
+    updateOrderStatus(id, 'shipped', { courier_name: manualCourier, tracking_number: manualTracking });
+    return;
+  }
+
+  // Try Delhivery auto-shipment
+  const originalText = btn.textContent;
+  btn.textContent = 'SHIPPING...';
+  btn.disabled = true;
+
+  try {
+    const data = await apiFetch(`/api/orders/${id}/create-shipment`, 'POST');
+    alert(`Shipped via Delhivery!\nTracking: ${data.tracking_number}`);
+    loadDashboard();
+    loadStats();
+  } catch (err) {
+    if (err.fallback) {
+      // Delhivery failed — prompt manual entry
+      alert(`Delhivery auto-ship failed: ${err.message}\n\nEnter courier and tracking manually.`);
+      btn.textContent = originalText;
+      btn.disabled = false;
+    } else {
+      alert('Failed to create shipment: ' + err.message);
+      btn.textContent = originalText;
+      btn.disabled = false;
+    }
+  }
 }
 
 window.confirmCancel = function confirmCancel(id) {
@@ -548,7 +577,11 @@ async function apiFetch(path, method = 'GET', body = null) {
   if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
   const r = await fetch(API + path, opts);
   const data = await r.json();
-  if (!r.ok) throw new Error(data.error || r.status);
+  if (!r.ok) {
+    const e = new Error(data.error || r.status);
+    e.fallback = data.fallback || false;
+    throw e;
+  }
   return data;
 }
 function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }

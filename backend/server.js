@@ -170,6 +170,9 @@ v1.use("/checkouts", checkoutLimiter, checkoutRouter);
 app.use("/api/v1", v1);
 app.use("/api", v1); // Alias for backward compatibility
 
+// Delhivery delivery status webhooks
+app.use("/api/webhooks", require("./routes/webhooks"));
+
 // Health check
 app.get("/health", async (_req, res) => {
   try {

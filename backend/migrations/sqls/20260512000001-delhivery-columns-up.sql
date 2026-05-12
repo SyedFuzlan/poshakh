@@ -1,0 +1,2 @@
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS delhivery_awb VARCHAR(100);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS delhivery_label_url TEXT;
