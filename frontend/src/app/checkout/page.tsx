@@ -232,7 +232,7 @@ export default function CheckoutPage() {
 
       // 2. Open Razorpay Modal
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        key: data.key_id,
         amount: data.amount,
         currency: data.currency,
         name: "ZOHRA",
