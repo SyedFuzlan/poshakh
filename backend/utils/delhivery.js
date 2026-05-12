@@ -54,11 +54,18 @@ async function createShipment(order) {
       signal: controller.signal,
     });
 
-    const json = await res.json();
+    const rawText = await res.text();
+    console.error('Delhivery raw response:', res.status, rawText);
+
+    let json;
+    try { json = JSON.parse(rawText); } catch { throw new Error(`Delhivery non-JSON response (${res.status}): ${rawText.slice(0, 200)}`); }
+
+    if (!res.ok) throw new Error(`Delhivery error (${res.status}): ${json.error || json.message || rawText.slice(0, 200)}`);
+
     const pkg = json.packages && json.packages[0];
 
     if (!pkg || pkg.status !== 'Success' || !pkg.waybill) {
-      throw new Error(pkg ? pkg.remarks || 'Delhivery shipment creation failed' : 'Empty response from Delhivery');
+      throw new Error(pkg ? (pkg.remarks || JSON.stringify(pkg)) : `Delhivery no package in response: ${rawText.slice(0, 300)}`);
     }
 
     return {
