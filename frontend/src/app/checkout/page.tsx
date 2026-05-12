@@ -255,7 +255,7 @@ export default function CheckoutPage() {
             if (vData.success) {
               finishOrder(response.razorpay_payment_id);
             } else {
-              alert(vData.error || "Verification failed");
+              alert((vData.error || "Verification failed") + (vData.details ? `\n\nDetails: ${vData.details}` : ""));
             }
           } catch (err) {
             console.error("Verification error:", err);
