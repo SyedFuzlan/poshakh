@@ -77,7 +77,7 @@ async function saveOrder({ orderId, checkoutId, paymentMethod, razorpayPaymentId
         if (!item.product_id || !item.size) continue;
         
         // Fetch product and variant details from DB
-        const productRes = await client.query(`SELECT price, price_paise FROM products WHERE id = $1`, [item.product_id]);
+        const productRes = await client.query(`SELECT price_paise FROM products WHERE id = $1`, [item.product_id]);
         const product = productRes.rows[0];
 
         const variantRes = await client.query(`
@@ -108,7 +108,7 @@ async function saveOrder({ orderId, checkoutId, paymentMethod, razorpayPaymentId
         }
 
         // Use price_paise if available, otherwise convert price to paise
-        const itemPricePaise = (product.price_paise != null) ? product.price_paise : Math.round(product.price * 100);
+        const itemPricePaise = product.price_paise ?? 0;
         calculatedSubtotalPaise += itemPricePaise * qty;
       }
     }
@@ -174,9 +174,9 @@ async function saveOrder({ orderId, checkoutId, paymentMethod, razorpayPaymentId
     if (Array.isArray(items)) {
       for (const item of items) {
         if (item.product_id && item.size) {
-          const productRes = await client.query(`SELECT price_paise, price FROM products WHERE id = $1`, [item.product_id]);
+          const productRes = await client.query(`SELECT price_paise FROM products WHERE id = $1`, [item.product_id]);
           const product = productRes.rows[0];
-          const pricePaise = (product?.price_paise != null) ? product.price_paise : Math.round((product?.price || 0) * 100);
+          const pricePaise = product?.price_paise ?? 0;
           
           const qty = parseInt(item.quantity || 1, 10);
 
