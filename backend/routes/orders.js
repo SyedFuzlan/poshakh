@@ -490,8 +490,9 @@ router.post("/:id/create-shipment", requireOwner, async (req, res) => {
     const row = await db.prepare("SELECT * FROM orders WHERE id = $1").get(id);
     if (!row) return res.status(404).json({ error: "Order not found" });
 
-    if (row.status !== 'processing' && row.status !== 'paid' && row.status !== 'confirmed') {
-      return res.status(400).json({ error: "Order must be in processing, paid, or confirmed status to ship" });
+    const shippableStatuses = ['pending', 'paid', 'confirmed', 'processing'];
+    if (!shippableStatuses.includes(row.status)) {
+      return res.status(400).json({ error: `Order status '${row.status}' cannot be shipped` });
     }
 
     let awb, label_url;

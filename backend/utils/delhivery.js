@@ -39,7 +39,7 @@ async function createShipment(order) {
     pickup_location: { name: pickupName },
   };
 
-  const body = `format=json&data=${encodeURIComponent(JSON.stringify(data))}`;
+  const params = new URLSearchParams({ format: 'json', data: JSON.stringify(data) });
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 5000);
@@ -51,7 +51,7 @@ async function createShipment(order) {
         Authorization: `Token ${token}`,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body,
+      body: params.toString(),
       signal: controller.signal,
     });
 
