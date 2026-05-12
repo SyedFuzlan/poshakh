@@ -336,11 +336,11 @@ async function handleVerify(req, res) {
     logger.info({ orderId, paymentId: razorpay_payment_id }, 'Order saved via Razorpay');
     res.json({ success: true, order_id: orderId });
   } catch (err) {
-    logger.error({ 
-      err: err.message, 
+    logger.error({
+      err: err.message,
       stack: err.stack,
-      paymentId: razorpay_payment_id,
-      orderId: razorpay_order_id
+      paymentId: req.body?.razorpay_payment_id,
+      orderId: req.body?.razorpay_order_id
     }, "Payment verification error");
     res.status(500).json({ 
       success: false, 
