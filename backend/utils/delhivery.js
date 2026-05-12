@@ -41,7 +41,6 @@ async function createShipment(order) {
   };
 
   const body = 'format=json&data=' + encodeURIComponent(JSON.stringify(data));
-  console.error('Delhivery request payload:', JSON.stringify(data));
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 5000);
