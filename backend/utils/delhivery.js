@@ -39,6 +39,9 @@ async function createShipment(order) {
     pickup_location: { name: pickupName },
   };
 
+  const body = 'format=json&data=' + encodeURIComponent(JSON.stringify(data));
+  console.error('Delhivery request payload:', JSON.stringify(data));
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 5000);
 
@@ -47,10 +50,9 @@ async function createShipment(order) {
       method: 'POST',
       headers: {
         Authorization: `Token ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify({ format: 'json', data }),
+      body,
       signal: controller.signal,
     });
 
