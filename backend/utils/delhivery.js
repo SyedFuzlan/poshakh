@@ -39,8 +39,6 @@ async function createShipment(order) {
     pickup_location: { name: pickupName },
   };
 
-  const params = new URLSearchParams({ format: 'json', data: JSON.stringify(data) });
-
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 5000);
 
@@ -49,9 +47,10 @@ async function createShipment(order) {
       method: 'POST',
       headers: {
         Authorization: `Token ${token}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
-      body: params.toString(),
+      body: JSON.stringify({ format: 'json', data }),
       signal: controller.signal,
     });
 
